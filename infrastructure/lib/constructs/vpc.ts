@@ -1,4 +1,4 @@
-import { Construct } from '@aws-cdk/core';
+import { Construct, CfnOutput } from '@aws-cdk/core';
 import { GatewayVpcEndpointAwsService, Vpc, SubnetType, VpcProps, SecurityGroup, Port, Peer } from '@aws-cdk/aws-ec2';
 import { Environment } from '../pillar-stack';
 
@@ -25,6 +25,9 @@ const buildSubnetCidrs = (cidr: string) => {
 
 export class PillarVpc extends Construct {
   public instance: Vpc;
+  public isolatedSubnetIds: string[];
+  public publicSubnetIds: string[];
+  public privateSubnetIds: string[];
   constructor(scope: Construct, id: string, props: VpcConstructProps) {
     super(scope, id);
 
@@ -68,5 +71,24 @@ export class PillarVpc extends Construct {
     };
     const params = { ...defaultProps, ...restProps };
     this.instance = new Vpc(this, vpcId, params);
+    this.groupSubnets();
+  }
+
+  groupSubnets() {
+    this.isolatedSubnetIds = this.instance.isolatedSubnets.map((sub) => sub.subnetId);
+    this.privateSubnetIds = this.instance.privateSubnets.map((sub) => sub.subnetId);
+    this.publicSubnetIds = this.instance.publicSubnets.map((sub) => sub.subnetId);
+
+    new CfnOutput(this, 'VpcIsolatedSubnetIds', {
+      value: JSON.stringify(this.isolatedSubnetIds),
+    });
+
+    new CfnOutput(this, 'VpcPrivateSubnetIds', {
+      value: JSON.stringify(this.privateSubnetIds),
+    });
+
+    new CfnOutput(this, 'VpcPublicSubnetIds', {
+      value: JSON.stringify(this.publicSubnetIds),
+    });
   }
 }

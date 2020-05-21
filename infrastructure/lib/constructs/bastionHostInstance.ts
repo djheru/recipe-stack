@@ -22,7 +22,7 @@ export class BastionHostInstance extends Construct {
     ssh-keygen -t rsa -f ~/.ssh/cdk_key
 
     # Authorize the user
-    export INSTANCE_ID="i-074c9410ed0d2a493" && \
+    export INSTANCE_ID="i-00ae3d4064dbf46c7" && \
     aws ec2-instance-connect send-ssh-public-key \
       --region us-west-2 \
       --instance-id $INSTANCE_ID \
@@ -31,7 +31,7 @@ export class BastionHostInstance extends Construct {
       --ssh-public-key file://~/.ssh/cdk_key.pub
 
     # Connect via SSH (within 60 seconds)
-    export INSTANCE_HOST="ec2-52-27-228-181.us-west-2.compute.amazonaws.com" && \
+    export INSTANCE_HOST="ec2-35-166-38-215.us-west-2.compute.amazonaws.com" && \
     ssh -i ~/.ssh/cdk_key ec2-user@$INSTANCE_HOST
 
     ssh -oStrictHostKeyChecking=no \

@@ -2,7 +2,8 @@ import * as cdk from '@aws-cdk/core';
 import { PillarVpc } from './constructs/vpc';
 import { BastionHostInstance } from './constructs/bastionHostInstance';
 import { AssetBucket } from './constructs/assetBucket';
-import { DbCluster } from './constructs/dbCluster';
+// import { DbCluster } from './constructs/dbCluster';
+import { DbClusterServerless } from './constructs/dbClusterServerless';
 
 export type Environment = 'demo' | 'dev' | 'prod' | 'prototype';
 
@@ -34,10 +35,18 @@ export class PillarStack extends cdk.Stack {
       environmentName: this.environmentName,
     });
 
-    const usersDbCluster = new DbCluster(this, 'usersDb', {
+    // const usersDbCluster = new DbCluster(this, 'usersDb', {
+    //   name: 'users',
+    //   environmentName: this.environmentName,
+    //   vpc: pillarVpc.instance,
+    //   allowedConnections: [bastionHost.instance],
+    // });
+
+    const usersDbCluster = new DbClusterServerless(this, 'usersDb', {
       name: 'users',
       environmentName: this.environmentName,
       vpc: pillarVpc.instance,
+      subnetIds: pillarVpc.isolatedSubnetIds,
       allowedConnections: [bastionHost.instance],
     });
   }
