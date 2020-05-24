@@ -1,12 +1,12 @@
 import { Bucket } from '@aws-cdk/aws-s3';
 import { existsSync } from 'fs';
 import * as path from 'path';
-import { Construct, RemovalPolicy } from '@aws-cdk/core';
+import { Construct, RemovalPolicy, CfnOutput } from '@aws-cdk/core';
 import { CloudFrontTarget } from '@aws-cdk/aws-route53-targets';
 import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
 import { CloudFrontWebDistribution, SSLMethod, SecurityPolicyProtocol } from '@aws-cdk/aws-cloudfront';
 import { DnsValidatedCertificate } from '@aws-cdk/aws-certificatemanager';
-import { HostedZone, ARecord, AddressRecordTarget } from '@aws-cdk/aws-route53';
+import { HostedZone, ARecord, AddressRecordTarget, IHostedZone } from '@aws-cdk/aws-route53';
 import { Environment } from './../pillar-stack';
 
 export interface WebsiteProps {
@@ -17,25 +17,59 @@ export interface WebsiteProps {
 }
 
 export class Website extends Construct {
+  public name: string;
+  public environmentName: Environment;
+  public hostedZoneDomainName: string;
+  public certificateDomainName: string;
+  public hostedZone: IHostedZone;
+  public frontEndCertificate: DnsValidatedCertificate;
+  public siteBucket: Bucket;
+  public distribution: CloudFrontWebDistribution;
+  public deployment: BucketDeployment;
+  public aRecord: ARecord;
+
   constructor(scope: Construct, id: string, props: WebsiteProps) {
     super(scope, id);
     const { name, environmentName, hostedZoneDomainName, certificateDomainName } = props;
 
-    const hostedZone = HostedZone.fromLookup(this, this.node.tryGetContext('domain'), {
-      domainName: hostedZoneDomainName,
+    this.name = name;
+    this.environmentName = environmentName;
+    this.hostedZoneDomainName = hostedZoneDomainName;
+    this.certificateDomainName = certificateDomainName;
+
+    this.hostedZoneLookup();
+    this.buildCertificate();
+    this.buildBucket();
+    this.buildCloudFrontDistribution();
+
+    const websiteAssetPath = `../websites/${name}/build`;
+    if (Website.checkWebsitePathExists(websiteAssetPath)) {
+      this.bucketDeployment(websiteAssetPath);
+    }
+
+    this.buildARecord();
+  }
+
+  private hostedZoneLookup() {
+    this.hostedZone = HostedZone.fromLookup(this, this.node.tryGetContext('domain'), {
+      domainName: this.hostedZoneDomainName,
       privateZone: false,
     });
+  }
 
-    const certificateName = `${name}-${environmentName}-cert`;
-    const frontEndCertificate = new DnsValidatedCertificate(this, certificateName, {
-      domainName: certificateDomainName,
-      hostedZone,
+  private buildCertificate() {
+    const certificateName = `${this.name}-${this.environmentName}-cert`;
+    this.frontEndCertificate = new DnsValidatedCertificate(this, certificateName, {
+      domainName: this.certificateDomainName,
+      hostedZone: this.hostedZone,
       region: 'us-east-1',
     });
+  }
 
-    const stackName = `${name}-${environmentName}-bucket`;
-    const bucketName = `${certificateDomainName.replace(/\./g, '-')}-assets`;
-    const siteBucket = new Bucket(this, stackName, {
+  private buildBucket() {
+    const stackName = `${this.name}-${this.environmentName}-bucket`;
+    const bucketName = `${this.certificateDomainName.replace(/\./g, '-')}-assets`;
+    this.siteBucket = new Bucket(this, stackName, {
       bucketName,
       websiteIndexDocument: 'index.html',
       websiteErrorDocument: 'error.html',
@@ -49,23 +83,28 @@ export class Website extends Construct {
       },
     });
 
-    const distributionName = `${name}-${environmentName}-distribution`;
-    const distribution = new CloudFrontWebDistribution(this, distributionName, {
+    this.exportValue({
+      exportName: `${stackName}-arn`,
+      value: this.siteBucket.bucketArn,
+      description: `ARN for the ${bucketName} bucket`,
+    });
+
+    this.exportValue({
+      exportName: `${stackName}-name`,
+      value: this.siteBucket.bucketName,
+      description: `Name for the ${bucketName} bucket`,
+    });
+  }
+
+  private buildCloudFrontDistribution() {
+    const distributionName = `${this.name}-${this.environmentName}-distribution`;
+    this.distribution = new CloudFrontWebDistribution(this, distributionName, {
       aliasConfiguration: {
-        acmCertRef: frontEndCertificate.certificateArn,
-        names: [props.certificateDomainName],
+        acmCertRef: this.frontEndCertificate.certificateArn,
+        names: [this.certificateDomainName],
         sslMethod: SSLMethod.SNI,
         securityPolicy: SecurityPolicyProtocol.TLS_V1_1_2016,
       },
-      originConfigs: [
-        {
-          s3OriginSource: {
-            s3BucketSource: siteBucket,
-          },
-          behaviors: [{ isDefaultBehavior: true }],
-          originPath: '/live',
-        },
-      ],
       errorConfigurations: [
         {
           errorCode: 404,
@@ -80,24 +119,44 @@ export class Website extends Construct {
           responsePagePath: '/index.html',
         },
       ],
+      loggingConfig: {
+        bucket: this.siteBucket,
+        prefix: 'logs',
+      },
+      originConfigs: [
+        {
+          s3OriginSource: {
+            s3BucketSource: this.siteBucket,
+          },
+          behaviors: [{ isDefaultBehavior: true }],
+          originPath: '/live',
+        },
+      ],
     });
 
-    const websiteAssetPath = `../websites/${name}/build`;
-    if (Website.checkWebsitePathExists(websiteAssetPath)) {
-      const deploymentName = `${name}-${environmentName}-bucket-deployment`;
-      const deployment = new BucketDeployment(this, deploymentName, {
-        sources: [Source.asset(websiteAssetPath)],
-        destinationBucket: siteBucket,
-        destinationKeyPrefix: 'live',
-        distribution,
-        distributionPaths: ['/index.html'],
-      });
-    }
+    this.exportValue({
+      exportName: `${distributionName}-id`,
+      value: this.distribution.distributionId,
+      description: `Distribution ID for ${distributionName}`,
+    });
+  }
 
-    const aRecord = new ARecord(this, `${name}-${environmentName}-website-a-record`, {
-      recordName: certificateDomainName,
-      zone: hostedZone,
-      target: AddressRecordTarget.fromAlias(new CloudFrontTarget(distribution)),
+  private bucketDeployment(websiteAssetPath: string) {
+    const deploymentName = `${this.name}-${this.environmentName}-bucket-deployment`;
+    const deployment = new BucketDeployment(this, deploymentName, {
+      sources: [Source.asset(websiteAssetPath)],
+      destinationBucket: this.siteBucket,
+      destinationKeyPrefix: 'live',
+      distribution: this.distribution,
+      distributionPaths: ['/index.html'],
+    });
+  }
+
+  private buildARecord() {
+    this.aRecord = new ARecord(this, `${this.name}-${this.environmentName}-website-a-record`, {
+      recordName: this.certificateDomainName,
+      zone: this.hostedZone,
+      target: AddressRecordTarget.fromAlias(new CloudFrontTarget(this.distribution)),
     });
   }
 
@@ -108,5 +167,14 @@ export class Website extends Construct {
       console.log('Website path does not exist, skipping initial deployment', path);
       return false;
     }
+  }
+
+  private exportValue(params: { exportName: string; value: string; description: string }) {
+    const { exportName, value, description } = params;
+    new CfnOutput(this, exportName, {
+      value,
+      description,
+      exportName,
+    });
   }
 }
