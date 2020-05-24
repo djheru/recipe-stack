@@ -1,3 +1,4 @@
+import { Website } from './constructs/website';
 import * as cdk from '@aws-cdk/core';
 import { PillarVpc } from './constructs/vpc';
 import { BastionHostInstance } from './constructs/bastionHostInstance';
@@ -48,6 +49,13 @@ export class PillarStack extends cdk.Stack {
       vpc: pillarVpc.instance,
       subnetIds: pillarVpc.isolatedSubnetIds,
       allowedConnections: [bastionHost.instance],
+    });
+
+    const website = new Website(this, 'website', {
+      name: 'recipe-web',
+      environmentName: this.environmentName,
+      hostedZoneDomainName: 'di-metal.net',
+      certificateDomainName: 'web.di-metal.net',
     });
   }
 }
