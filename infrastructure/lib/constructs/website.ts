@@ -1,6 +1,10 @@
 import { Bucket } from '@aws-cdk/aws-s3';
+import { Artifact, Pipeline } from '@aws-cdk/aws-codepipeline';
+import { BuildSpec, Project } from '@aws-cdk/aws-codebuild';
+import { Role, ManagedPolicy, ServicePrincipal } from '@aws-cdk/aws-iam';
+import { CodeBuildAction, CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 import { existsSync } from 'fs';
-import * as path from 'path';
+import { Repository } from '@aws-cdk/aws-codecommit';
 import { Construct, RemovalPolicy, CfnOutput } from '@aws-cdk/core';
 import { CloudFrontTarget } from '@aws-cdk/aws-route53-targets';
 import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
@@ -14,6 +18,7 @@ export interface WebsiteProps {
   environmentName: Environment;
   hostedZoneDomainName: string;
   certificateDomainName: string;
+  gitRepository: Repository;
 }
 
 export class Website extends Construct {
@@ -27,27 +32,31 @@ export class Website extends Construct {
   public distribution: CloudFrontWebDistribution;
   public deployment: BucketDeployment;
   public aRecord: ARecord;
+  public gitRepository: Repository;
 
   constructor(scope: Construct, id: string, props: WebsiteProps) {
     super(scope, id);
-    const { name, environmentName, hostedZoneDomainName, certificateDomainName } = props;
+    const { name, environmentName, hostedZoneDomainName, certificateDomainName, gitRepository } = props;
 
     this.name = name;
     this.environmentName = environmentName;
     this.hostedZoneDomainName = hostedZoneDomainName;
     this.certificateDomainName = certificateDomainName;
+    this.gitRepository = gitRepository;
 
     this.hostedZoneLookup();
     this.buildCertificate();
     this.buildBucket();
     this.buildCloudFrontDistribution();
 
+    // Deploy the website if it exists
     const websiteAssetPath = `../websites/${name}/build`;
     if (Website.checkWebsitePathExists(websiteAssetPath)) {
       this.bucketDeployment(websiteAssetPath);
     }
 
     this.buildARecord();
+    this.buildPipeline();
   }
 
   private hostedZoneLookup() {
@@ -160,15 +169,6 @@ export class Website extends Construct {
     });
   }
 
-  static checkWebsitePathExists(path: string) {
-    try {
-      return existsSync(path);
-    } catch (e) {
-      console.log('Website path does not exist, skipping initial deployment', path);
-      return false;
-    }
-  }
-
   private exportValue(params: { exportName: string; value: string; description: string }) {
     const { exportName, value, description } = params;
     new CfnOutput(this, exportName, {
@@ -176,5 +176,99 @@ export class Website extends Construct {
       description,
       exportName,
     });
+  }
+
+  private buildPipeline() {
+    const pipelineName = '';
+    const pipeline = new Pipeline(this, 'stack-pipeline', {
+      pipelineName: 'stack-pipeline',
+    });
+    const sourceStage = pipeline.addStage({
+      stageName: 'source',
+    });
+    const buildStage = pipeline.addStage({
+      stageName: 'build',
+      placement: {
+        justAfter: sourceStage,
+      },
+    });
+
+    const sourceOutput = new Artifact();
+    const sourceAction = new CodeCommitSourceAction({
+      actionName: 'CodeCommit',
+      repository: this.gitRepository,
+      output: sourceOutput,
+    });
+
+    sourceStage.addAction(sourceAction);
+
+    const role = new Role(this, 'CodeBuildRole', {
+      assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
+      managedPolicies: [
+        ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
+        ManagedPolicy.fromAwsManagedPolicyName('CloudFrontFullAccess'),
+      ],
+    });
+
+    const codeBuild = new Project(this, 'CodeBuildProject', {
+      role,
+      buildSpec: BuildSpec.fromObject({
+        version: 0.2,
+        phases: {
+          install: {
+            'runtime-versions': {
+              nodejs: 10,
+            },
+            commands: [
+              'echo installing dependencies',
+              'echo installing aws cli',
+              'pip install awscli --upgrade --user',
+              'echo check version',
+              'aws --version',
+              `cd websites/${this.name}`,
+              'npm install',
+            ],
+          },
+          build: {
+            commands: [
+              'echo Build started on `date`',
+              'echo Building web app',
+              `cd websites/${this.name}`,
+              'npm run build',
+            ],
+            artifacts: {
+              files: ['**/*'],
+              'base-directory': `websites/${this.name}/build`,
+              'discard-paths': 'yes',
+            },
+          },
+          post_build: {
+            commands: [
+              'echo BUILD COMPLETE running sync with s3',
+              `aws s3 rm s3://${this.siteBucket}/live --recursive`,
+              `aws s3 cp websites/${this.name}/build s3://${this.siteBucket}/live --recursive --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers`,
+              `aws cloudfront create-invalidation --distribution-id ${this.distribution.distributionId} --paths "/index.html"`,
+            ],
+          },
+        },
+      }),
+    });
+
+    const buildAction = new CodeBuildAction({
+      actionName: 'Build',
+      input: sourceOutput,
+      project: codeBuild,
+    });
+
+    buildStage.addAction(buildAction);
+  }
+
+  static checkWebsitePathExists(path: string) {
+    try {
+      return existsSync(path);
+    } catch (e) {
+      console.log('Website path does not exist, skipping initial deployment', path);
+      return false;
+    }
   }
 }
