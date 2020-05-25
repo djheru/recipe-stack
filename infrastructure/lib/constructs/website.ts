@@ -240,7 +240,7 @@ export class Website extends Construct {
           post_build: {
             commands: [
               'echo BUILD COMPLETE running sync with s3',
-              `aws s3 rm s3://${this.siteBucket}/live --recursive`,
+              `aws s3 rm s3://${this.bucketName}/live --recursive`,
               `aws s3 cp websites/${this.name}/build s3://${this.bucketName}/live --recursive --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers`,
               `aws cloudfront create-invalidation --distribution-id ${this.distribution.distributionId} --paths "/index.html"`,
             ],
