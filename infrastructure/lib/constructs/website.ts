@@ -28,6 +28,7 @@ export class Website extends Construct {
   public certificateDomainName: string;
   public hostedZone: IHostedZone;
   public frontEndCertificate: DnsValidatedCertificate;
+  public bucketName: string;
   public siteBucket: Bucket;
   public distribution: CloudFrontWebDistribution;
   public deployment: BucketDeployment;
@@ -77,9 +78,9 @@ export class Website extends Construct {
 
   private buildBucket() {
     const stackName = `${this.name}-${this.environmentName}-bucket`;
-    const bucketName = `${this.certificateDomainName.replace(/\./g, '-')}-assets`;
+    this.bucketName = `${this.certificateDomainName.replace(/\./g, '-')}-assets`;
     this.siteBucket = new Bucket(this, stackName, {
-      bucketName,
+      bucketName: this.bucketName,
       websiteIndexDocument: 'index.html',
       websiteErrorDocument: 'error.html',
       publicReadAccess: true,
@@ -95,13 +96,13 @@ export class Website extends Construct {
     this.exportValue({
       exportName: `${stackName}-arn`,
       value: this.siteBucket.bucketArn,
-      description: `ARN for the ${bucketName} bucket`,
+      description: `ARN for the ${this.bucketName} bucket`,
     });
 
     this.exportValue({
       exportName: `${stackName}-name`,
       value: this.siteBucket.bucketName,
-      description: `Name for the ${bucketName} bucket`,
+      description: `Name for the ${this.bucketName} bucket`,
     });
   }
 
@@ -179,7 +180,6 @@ export class Website extends Construct {
   }
 
   private buildPipeline() {
-    const pipelineName = '';
     const pipeline = new Pipeline(this, 'stack-pipeline', {
       pipelineName: 'stack-pipeline',
     });
@@ -230,12 +230,7 @@ export class Website extends Construct {
             ],
           },
           build: {
-            commands: [
-              'echo Build started on `date`',
-              'echo Building web app',
-              `cd websites/${this.name}`,
-              'npm run build',
-            ],
+            commands: ['echo Build started on `date`', 'echo Building web app', `ls`, 'npm run build'],
             artifacts: {
               files: ['**/*'],
               'base-directory': `websites/${this.name}/build`,
@@ -246,7 +241,7 @@ export class Website extends Construct {
             commands: [
               'echo BUILD COMPLETE running sync with s3',
               `aws s3 rm s3://${this.siteBucket}/live --recursive`,
-              `aws s3 cp websites/${this.name}/build s3://${this.siteBucket}/live --recursive --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers`,
+              `aws s3 cp websites/${this.name}/build s3://${this.bucketName}/live --recursive --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers`,
               `aws cloudfront create-invalidation --distribution-id ${this.distribution.distributionId} --paths "/index.html"`,
             ],
           },
