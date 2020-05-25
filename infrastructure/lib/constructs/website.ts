@@ -11,7 +11,7 @@ import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
 import { CloudFrontWebDistribution, SSLMethod, SecurityPolicyProtocol } from '@aws-cdk/aws-cloudfront';
 import { DnsValidatedCertificate } from '@aws-cdk/aws-certificatemanager';
 import { HostedZone, ARecord, AddressRecordTarget, IHostedZone } from '@aws-cdk/aws-route53';
-import { Environment } from './../pillar-stack';
+import { Environment } from '../pillar-stack';
 
 export interface WebsiteProps {
   name: string;
@@ -192,6 +192,10 @@ export class Website extends Construct {
         justAfter: sourceStage,
       },
     });
+
+    /*
+    each Pipelineable supplies its own build and deploy actions, and share the source action
+    */
 
     const sourceOutput = new Artifact();
     const sourceAction = new CodeCommitSourceAction({
