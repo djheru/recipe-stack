@@ -15,16 +15,9 @@ export enum DefaultCidr {
 
 export type ValidDefaultCidr = keyof typeof DefaultCidr;
 
-const buildSubnetCidrs = (cidr: string) => {
-  const octets = cidr.split('.');
-  const firstTwo = `${octets[0]}.${octets[1]}`;
-  const subnetSegments = ['8', '16', '24', '32'];
-  const [publicSubnet1, publicSubnet2, privateSubnet1, privateSubnet2] = subnetSegments.map((seg) => `${firstTwo}.${seg}.0/21`);
-  return { publicSubnet1, publicSubnet2, privateSubnet1, privateSubnet2 };
-};
-
 export class PillarVpc extends Construct {
   public instance: Vpc;
+  public environmentName: Environment;
   public isolatedSubnetIds: string[];
   public publicSubnetIds: string[];
   public privateSubnetIds: string[];
@@ -32,7 +25,10 @@ export class PillarVpc extends Construct {
     super(scope, id);
 
     const { name, environmentName, ...restProps } = props;
-    const vpcId = `pillar-${name}-${environmentName}`;
+
+    this.environmentName = environmentName;
+
+    const vpcId = name;
     const env: ValidDefaultCidr = <ValidDefaultCidr>environmentName.toUpperCase();
     const cidr = DefaultCidr[env];
     const defaultProps = {
@@ -79,15 +75,15 @@ export class PillarVpc extends Construct {
     this.privateSubnetIds = this.instance.privateSubnets.map((sub) => sub.subnetId);
     this.publicSubnetIds = this.instance.publicSubnets.map((sub) => sub.subnetId);
 
-    new CfnOutput(this, 'VpcIsolatedSubnetIds', {
+    new CfnOutput(this, `${this.environmentName}-vpc-isolated-subnet-ids`, {
       value: JSON.stringify(this.isolatedSubnetIds),
     });
 
-    new CfnOutput(this, 'VpcPrivateSubnetIds', {
+    new CfnOutput(this, `${this.environmentName}-vpc-private-subnet-ids`, {
       value: JSON.stringify(this.privateSubnetIds),
     });
 
-    new CfnOutput(this, 'VpcPublicSubnetIds', {
+    new CfnOutput(this, `${this.environmentName}-vpc-public-subnet-ids`, {
       value: JSON.stringify(this.publicSubnetIds),
     });
   }

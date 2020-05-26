@@ -1,5 +1,13 @@
 import { Construct } from '@aws-cdk/core';
-import { BastionHostLinux, BastionHostLinuxProps, Peer, SubnetType, InstanceType, InstanceClass, InstanceSize } from '@aws-cdk/aws-ec2';
+import {
+  BastionHostLinux,
+  BastionHostLinuxProps,
+  Peer,
+  SubnetType,
+  InstanceType,
+  InstanceClass,
+  InstanceSize,
+} from '@aws-cdk/aws-ec2';
 import { Environment } from '../pillar-stack';
 
 export interface BastionHostInstanceConstructProps extends BastionHostLinuxProps {
@@ -42,7 +50,7 @@ export class BastionHostInstance extends Construct {
     # If you don't connect within 60 sec, you get: "Permission denied (publickey,gssapi-keyex,gssapi-with-mic)."
     */
     const { name, environmentName, vpc, ...restProps } = props;
-    const instanceName = `pillar-${name}-${environmentName}`;
+    const instanceName = name;
 
     const defaultProps = {
       instanceName,

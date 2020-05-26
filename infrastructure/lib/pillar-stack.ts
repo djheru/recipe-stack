@@ -10,12 +10,12 @@ import { DbClusterServerless } from './constructs/dbClusterServerless';
 export type Environment = 'demo' | 'dev' | 'prod' | 'prototype';
 
 type Stage = {
-  pillarVpc: PillarVpc;
-  bastionHost: BastionHostInstance;
-  assetBucket: AssetBucket;
-  // usersDbCluster: DbCluster;
-  usersDbCluster: DbClusterServerless;
-  website: Website;
+  pillarVpc?: PillarVpc;
+  bastionHost?: BastionHostInstance;
+  assetBucket?: AssetBucket;
+  // usersDbCluster?: DbCluster;
+  usersDbCluster?: DbClusterServerless;
+  website?: Website;
 };
 
 export class PillarStack extends cdk.Stack {
@@ -31,42 +31,43 @@ export class PillarStack extends cdk.Stack {
     });
   }
   public buildStage(environmentName: Environment) {
-    const pillarVpc = new PillarVpc(this, 'vpc', {
-      name: 'vpc',
+    const vpcName = `${environmentName}-vpc`;
+    const pillarVpc = new PillarVpc(this, vpcName, {
+      name: vpcName,
       environmentName: environmentName,
     });
 
-    const bastionHost = new BastionHostInstance(this, 'bastionHostInstance', {
-      name: 'bastionHost',
+    const bastionHostName = `${environmentName}-bastion-host`;
+    const bastionHost = new BastionHostInstance(this, bastionHostName, {
+      name: bastionHostName,
       environmentName: environmentName,
       vpc: pillarVpc.instance,
     });
 
-    const assetBucket = new AssetBucket(this, 'assetBucket', {
-      name: 'assetBucket',
+    const assetBucketName = `${environmentName}-assets`;
+    const assetBucket = new AssetBucket(this, assetBucketName, {
+      name: assetBucketName,
       environmentName: environmentName,
     });
 
-    // const usersDbCluster = new DbCluster(this, 'usersDb', {
-    //   name: 'users',
-    //   environmentName: this.environmentName,
-    //   vpc: pillarVpc.instance,
-    //   allowedConnections: [bastionHost.instance],
-    // });
-
-    const usersDbCluster = new DbClusterServerless(this, 'usersDb', {
-      name: 'users',
+    const usersDbClusterName = `${environmentName}-users-db`;
+    const usersDbCluster = new DbClusterServerless(this, usersDbClusterName, {
+      name: usersDbClusterName,
       environmentName: environmentName,
       vpc: pillarVpc.instance,
       subnetIds: pillarVpc.isolatedSubnetIds,
       allowedConnections: [bastionHost.instance],
     });
 
-    const website = new Website(this, 'website', {
-      name: 'recipe-web',
+    const certificateDomainName =
+      environmentName === 'prod' ? 'web.di-metal.net' : `${environmentName}.web.di-metal.net`;
+    const websiteName = `${environmentName}-recipe-website`;
+    const website = new Website(this, websiteName, {
+      name: websiteName,
       environmentName: environmentName,
+      sourcePath: '../websites/recipe-web',
       hostedZoneDomainName: 'di-metal.net',
-      certificateDomainName: 'web.di-metal.net',
+      certificateDomainName,
       gitRepository: this.gitRepository,
     });
 

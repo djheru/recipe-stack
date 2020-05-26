@@ -13,7 +13,7 @@ export class AssetBucket extends Construct {
     super(scope, id);
     const { name, environmentName, ...restProps } = props;
 
-    const bucketId = `pillar-${name}-${environmentName}-assets`.toLowerCase();
+    const bucketId = `${name}-bucket`;
     const defaults = {
       versioned: false,
       bucketName: bucketId,

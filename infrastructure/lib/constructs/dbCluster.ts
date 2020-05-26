@@ -1,5 +1,14 @@
 import { Construct, Duration, RemovalPolicy, CfnOutput } from '@aws-cdk/core';
-import { InstanceType, InstanceClass, InstanceSize, SubnetType, Vpc, InstanceProps, IConnectable, Port } from '@aws-cdk/aws-ec2';
+import {
+  InstanceType,
+  InstanceClass,
+  InstanceSize,
+  SubnetType,
+  Vpc,
+  InstanceProps,
+  IConnectable,
+  Port,
+} from '@aws-cdk/aws-ec2';
 import {
   DatabaseCluster,
   DatabaseClusterEngine,
@@ -31,6 +40,13 @@ export interface DbClusterProps {
   allowedConnections?: IConnectable[];
 }
 
+// const usersDbCluster = new DbCluster(this, 'usersDb', {
+//   name: 'users',
+//   environmentName: this.environmentName,
+//   vpc: pillarVpc.instance,
+//   allowedConnections: [bastionHost.instance],
+// });
+
 export class DbCluster extends Construct {
   public instance: DatabaseCluster;
   public dbSecret: DatabaseSecret;
@@ -49,7 +65,11 @@ export class DbCluster extends Construct {
       username: `${dbName}_admin`,
     });
     this.secretArn = this.dbSecret.secretArn;
-    this.exportValue({ exportName: `${secretName}-arn`, value: this.secretArn, description: `DB Secret ARN for ${secretName}` });
+    this.exportValue({
+      exportName: `${secretName}-arn`,
+      value: this.secretArn,
+      description: `DB Secret ARN for ${secretName}`,
+    });
 
     const defaultProps = {
       allowedConnections: [],

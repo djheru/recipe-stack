@@ -1,8 +1,8 @@
 import { Bucket } from '@aws-cdk/aws-s3';
 import { Artifact, Pipeline } from '@aws-cdk/aws-codepipeline';
-import { BuildSpec, Project } from '@aws-cdk/aws-codebuild';
+import { BuildSpec, PipelineProject, Project } from '@aws-cdk/aws-codebuild';
 import { Role, ManagedPolicy, ServicePrincipal } from '@aws-cdk/aws-iam';
-import { CodeBuildAction, CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
+import { CodeBuildAction, CodeCommitSourceAction, S3DeployAction } from '@aws-cdk/aws-codepipeline-actions';
 import { existsSync } from 'fs';
 import { Repository } from '@aws-cdk/aws-codecommit';
 import { Construct, RemovalPolicy, CfnOutput } from '@aws-cdk/core';
@@ -16,6 +16,7 @@ import { Environment } from '../pillar-stack';
 export interface WebsiteProps {
   name: string;
   environmentName: Environment;
+  sourcePath: string;
   hostedZoneDomainName: string;
   certificateDomainName: string;
   gitRepository: Repository;
@@ -24,6 +25,7 @@ export interface WebsiteProps {
 export class Website extends Construct {
   public name: string;
   public environmentName: Environment;
+  public sourcePath: string;
   public hostedZoneDomainName: string;
   public certificateDomainName: string;
   public hostedZone: IHostedZone;
@@ -37,10 +39,11 @@ export class Website extends Construct {
 
   constructor(scope: Construct, id: string, props: WebsiteProps) {
     super(scope, id);
-    const { name, environmentName, hostedZoneDomainName, certificateDomainName, gitRepository } = props;
+    const { name, environmentName, sourcePath, hostedZoneDomainName, certificateDomainName, gitRepository } = props;
 
     this.name = name;
     this.environmentName = environmentName;
+    this.sourcePath = sourcePath;
     this.hostedZoneDomainName = hostedZoneDomainName;
     this.certificateDomainName = certificateDomainName;
     this.gitRepository = gitRepository;
@@ -51,7 +54,7 @@ export class Website extends Construct {
     this.buildCloudFrontDistribution();
 
     // Deploy the website if it exists
-    const websiteAssetPath = `../websites/${name}/build`;
+    const websiteAssetPath = `${this.sourcePath}/build`;
     if (Website.checkWebsitePathExists(websiteAssetPath)) {
       this.bucketDeployment(websiteAssetPath);
     }
@@ -68,7 +71,7 @@ export class Website extends Construct {
   }
 
   private buildCertificate() {
-    const certificateName = `${this.name}-${this.environmentName}-cert`;
+    const certificateName = `${this.name}-cert`;
     this.frontEndCertificate = new DnsValidatedCertificate(this, certificateName, {
       domainName: this.certificateDomainName,
       hostedZone: this.hostedZone,
@@ -77,7 +80,7 @@ export class Website extends Construct {
   }
 
   private buildBucket() {
-    const stackName = `${this.name}-${this.environmentName}-bucket`;
+    const stackName = `${this.name}-bucket`;
     this.bucketName = `${this.certificateDomainName.replace(/\./g, '-')}-assets`;
     this.siteBucket = new Bucket(this, stackName, {
       bucketName: this.bucketName,
@@ -107,7 +110,7 @@ export class Website extends Construct {
   }
 
   private buildCloudFrontDistribution() {
-    const distributionName = `${this.name}-${this.environmentName}-distribution`;
+    const distributionName = `${this.name}-distribution`;
     this.distribution = new CloudFrontWebDistribution(this, distributionName, {
       aliasConfiguration: {
         acmCertRef: this.frontEndCertificate.certificateArn,
@@ -152,7 +155,7 @@ export class Website extends Construct {
   }
 
   private bucketDeployment(websiteAssetPath: string) {
-    const deploymentName = `${this.name}-${this.environmentName}-bucket-deployment`;
+    const deploymentName = `${this.name}-bucket-deployment`;
     const deployment = new BucketDeployment(this, deploymentName, {
       sources: [Source.asset(websiteAssetPath)],
       destinationBucket: this.siteBucket,
@@ -163,7 +166,7 @@ export class Website extends Construct {
   }
 
   private buildARecord() {
-    this.aRecord = new ARecord(this, `${this.name}-${this.environmentName}-website-a-record`, {
+    this.aRecord = new ARecord(this, `${this.name}-a-record`, {
       recordName: this.certificateDomainName,
       zone: this.hostedZone,
       target: AddressRecordTarget.fromAlias(new CloudFrontTarget(this.distribution)),
@@ -180,6 +183,146 @@ export class Website extends Construct {
   }
 
   private buildPipeline() {
+    const role = new Role(this, 'CodeBuildRole', {
+      assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
+      managedPolicies: [
+        ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
+        ManagedPolicy.fromAwsManagedPolicyName('CloudFrontFullAccess'),
+      ],
+    });
+
+    const pipelineName = `${this.name}-pipeline`;
+    const pipeline = new Pipeline(this, pipelineName, {
+      pipelineName,
+    });
+
+    const buildProjectName = `${this.name}-build-project`;
+    const buildProject = new PipelineProject(this, buildProjectName, {
+      role,
+      buildSpec: BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          install: {
+            'runtime-versions': {
+              nodejs: 10,
+            },
+            commands: [
+              'cd infrastructure',
+              'echo Installing Dependencies',
+              'echo Installing AWS CLI',
+              'pip install awscli --upgrade --user',
+              'echo check version',
+              'aws --version',
+              `cd ${this.sourcePath}`,
+              'npm install',
+              'echo Installation Complete',
+            ],
+          },
+          test: {
+            commands: ['echo Running Tests', 'CI=true npm test'],
+          },
+          build: {
+            commands: ['echo Build started on `date`', 'echo Building web app', 'CI=true npm run build'],
+          },
+          post_build: {},
+        },
+        artifacts: {
+          files: ['**/*'],
+          'base-directory': `websites/${this.name}/build`,
+          'discard-paths': 'yes',
+        },
+      }),
+    });
+
+    const deployProjectName = `${this.name}-${this.environmentName}-deploy-project`;
+    const deployProject = new PipelineProject(this, deployProjectName, {
+      role,
+      buildSpec: BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          install: {
+            'runtime-versions': {
+              nodejs: 10,
+            },
+            commands: [
+              'echo Installing Dependencies',
+              'echo Installing AWS CLI',
+              'pip install awscli --upgrade --user',
+              'echo check version',
+              'aws --version',
+              `cd websites/${this.name}`,
+            ],
+          },
+          pre_build: {
+            commands: [`aws s3 cp build s3://${this.bucketName}/versions/$CODEBUILD_RESOLVED_SOURCE_VERSION`],
+          },
+          build: {
+            commands: [
+              'echo BUILD COMPLETE running sync with s3',
+              `aws s3 rm s3://${this.bucketName}/live --recursive`,
+              `aws s3 cp build s3://${this.bucketName}/live --recursive --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers`,
+            ],
+          },
+          post_build: {
+            commands: [
+              `aws cloudfront create-invalidation --distribution-id ${this.distribution.distributionId} --paths "/index.html"`,
+            ],
+          },
+        },
+      }),
+    });
+
+    const sourceOutput = new Artifact();
+    const sourceActionName = `${this.name}-${this.environmentName}-codecommit-source-action`;
+    const sourceAction = new CodeCommitSourceAction({
+      actionName: sourceActionName,
+      repository: this.gitRepository,
+      output: sourceOutput,
+      runOrder: 1,
+    });
+    const sourceStage = pipeline.addStage({
+      stageName: 'source',
+      actions: [sourceAction],
+    });
+
+    const buildOutput = new Artifact();
+    const buildActionName = `${this.name}-${this.environmentName}-codebuild-build-action`;
+    const buildAction = new CodeBuildAction({
+      actionName: buildActionName,
+      project: buildProject,
+      input: sourceOutput,
+      outputs: [buildOutput],
+      runOrder: 2,
+    });
+    const buildStage = pipeline.addStage({
+      stageName: 'build',
+      actions: [buildAction],
+      placement: {
+        justAfter: sourceStage,
+      },
+    });
+
+    const deployActionName = `${this.name}-${this.environmentName}-deploy-action`;
+    const deployAction = new CodeBuildAction({
+      actionName: deployActionName,
+      project: deployProject,
+      input: buildOutput,
+      runOrder: 3,
+    });
+    const deployStage = pipeline.addStage({
+      stageName: 'deploy',
+      actions: [deployAction],
+      placement: {
+        justAfter: buildStage,
+      },
+    });
+
+    pipeline.addStage(sourceStage);
+    pipeline.addStage(buildStage);
+    pipeline.addStage(deployStage);
+  }
+
+  private buildCIPipeline() {
     const pipeline = new Pipeline(this, 'stack-pipeline', {
       pipelineName: 'stack-pipeline',
     });

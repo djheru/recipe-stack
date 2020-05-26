@@ -39,8 +39,8 @@ export class DbClusterServerless extends Construct {
     const { name, environmentName, subnetIds, vpc, ...restProps } = props;
 
     this.vpc = vpc;
-    this.clusterName = `pillar-${name}-${environmentName}-db`.toLowerCase();
-    this.clusterIdentifier = `${this.clusterName}-cluster`;
+    this.clusterName = name;
+    this.clusterIdentifier = `${name}-cluster`;
     this.connections = restProps.allowedConnections || [];
     this.databaseName = this.clusterName.replace(/-/g, '_');
     this.engine = restProps.engine || 'aurora-postgresql';
