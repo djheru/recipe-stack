@@ -242,7 +242,7 @@ export class Website extends Construct {
         },
         artifacts: {
           files: ['**/*'],
-          'base-directory': `${this.sourcePath}/build`,
+          'base-directory': `./build`,
           'discard-paths': 'yes',
         },
       }),
