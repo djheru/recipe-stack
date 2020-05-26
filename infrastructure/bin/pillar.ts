@@ -11,6 +11,6 @@ const stackProps: cdk.StackProps = {
     region: process.env.CDK_DEFAULT_REGION,
   },
 };
-const stack = new PillarStack(app, 'PillarStack', stackProps);
+const stack = new PillarStack(app, 'recipe-stack', stackProps);
 
 stack.buildStage('dev');

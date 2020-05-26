@@ -50,7 +50,7 @@ export class BastionHostInstance extends Construct {
     # If you don't connect within 60 sec, you get: "Permission denied (publickey,gssapi-keyex,gssapi-with-mic)."
     */
     const { name, environmentName, vpc, ...restProps } = props;
-    const instanceName = name;
+    const instanceName = `${name}-instance`;
 
     const defaultProps = {
       instanceName,

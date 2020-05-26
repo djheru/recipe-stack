@@ -19,15 +19,18 @@ type Stage = {
 };
 
 export class PillarStack extends cdk.Stack {
+  public id: string;
   public stages: { [key in Environment]?: Stage };
   public gitRepository: Repository;
 
   constructor(scope: cdk.Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
 
-    this.gitRepository = new Repository(this, 'stack-repo', {
-      repositoryName: 'recipe-stack',
-      description: 'Git repo for recipe-stack',
+    this.id = id;
+
+    this.gitRepository = new Repository(this, `${id}-repository`, {
+      repositoryName: id,
+      description: `Git repository for ${id}`,
     });
   }
   public buildStage(environmentName: Environment) {
@@ -44,7 +47,7 @@ export class PillarStack extends cdk.Stack {
       vpc: pillarVpc.instance,
     });
 
-    const assetBucketName = `${environmentName}-assets`;
+    const assetBucketName = `${environmentName}-${this.id}-assets`;
     const assetBucket = new AssetBucket(this, assetBucketName, {
       name: assetBucketName,
       environmentName: environmentName,

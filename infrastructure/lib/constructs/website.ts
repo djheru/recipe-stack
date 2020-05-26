@@ -183,6 +183,7 @@ export class Website extends Construct {
   }
 
   private buildPipeline() {
+    const roleName = `${this.name}-code-build-role`;
     const role = new Role(this, 'CodeBuildRole', {
       assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
       managedPolicies: [
@@ -194,6 +195,19 @@ export class Website extends Construct {
     const pipelineName = `${this.name}-pipeline`;
     const pipeline = new Pipeline(this, pipelineName, {
       pipelineName,
+    });
+
+    const sourceOutput = new Artifact();
+    const sourceActionName = `${this.name}-codecommit-source-action`;
+    const sourceAction = new CodeCommitSourceAction({
+      actionName: sourceActionName,
+      repository: this.gitRepository,
+      output: sourceOutput,
+      runOrder: 1,
+    });
+    const sourceStage = pipeline.addStage({
+      stageName: `source-${this.environmentName}`,
+      actions: [sourceAction],
     });
 
     const buildProjectName = `${this.name}-build-project`;
@@ -218,13 +232,12 @@ export class Website extends Construct {
               'echo Installation Complete',
             ],
           },
-          test: {
+          pre_build: {
             commands: ['echo Running Tests', 'CI=true npm test'],
           },
           build: {
             commands: ['echo Build started on `date`', 'echo Building web app', 'CI=true npm run build'],
           },
-          post_build: {},
         },
         artifacts: {
           files: ['**/*'],
@@ -234,7 +247,24 @@ export class Website extends Construct {
       }),
     });
 
-    const deployProjectName = `${this.name}-${this.environmentName}-deploy-project`;
+    const buildOutput = new Artifact();
+    const buildActionName = `${this.name}-codebuild-build-action`;
+    const buildAction = new CodeBuildAction({
+      actionName: buildActionName,
+      project: buildProject,
+      input: sourceOutput,
+      outputs: [buildOutput],
+      runOrder: 2,
+    });
+    const buildStage = pipeline.addStage({
+      stageName: 'build',
+      actions: [buildAction],
+      placement: {
+        justAfter: sourceStage,
+      },
+    });
+
+    const deployProjectName = `${this.name}-deploy-project`;
     const deployProject = new PipelineProject(this, deployProjectName, {
       role,
       buildSpec: BuildSpec.fromObject({
@@ -250,7 +280,7 @@ export class Website extends Construct {
               'pip install awscli --upgrade --user',
               'echo check version',
               'aws --version',
-              `cd websites/${this.name}`,
+              `cd ${this.sourcePath}`,
             ],
           },
           pre_build: {
@@ -272,36 +302,6 @@ export class Website extends Construct {
       }),
     });
 
-    const sourceOutput = new Artifact();
-    const sourceActionName = `${this.name}-${this.environmentName}-codecommit-source-action`;
-    const sourceAction = new CodeCommitSourceAction({
-      actionName: sourceActionName,
-      repository: this.gitRepository,
-      output: sourceOutput,
-      runOrder: 1,
-    });
-    const sourceStage = pipeline.addStage({
-      stageName: 'source',
-      actions: [sourceAction],
-    });
-
-    const buildOutput = new Artifact();
-    const buildActionName = `${this.name}-${this.environmentName}-codebuild-build-action`;
-    const buildAction = new CodeBuildAction({
-      actionName: buildActionName,
-      project: buildProject,
-      input: sourceOutput,
-      outputs: [buildOutput],
-      runOrder: 2,
-    });
-    const buildStage = pipeline.addStage({
-      stageName: 'build',
-      actions: [buildAction],
-      placement: {
-        justAfter: sourceStage,
-      },
-    });
-
     const deployActionName = `${this.name}-${this.environmentName}-deploy-action`;
     const deployAction = new CodeBuildAction({
       actionName: deployActionName,
@@ -316,94 +316,90 @@ export class Website extends Construct {
         justAfter: buildStage,
       },
     });
-
-    pipeline.addStage(sourceStage);
-    pipeline.addStage(buildStage);
-    pipeline.addStage(deployStage);
   }
 
-  private buildCIPipeline() {
-    const pipeline = new Pipeline(this, 'stack-pipeline', {
-      pipelineName: 'stack-pipeline',
-    });
-    const sourceStage = pipeline.addStage({
-      stageName: 'source',
-    });
-    const buildStage = pipeline.addStage({
-      stageName: 'build',
-      placement: {
-        justAfter: sourceStage,
-      },
-    });
+  // private buildCIPipeline() {
+  //   const pipeline = new Pipeline(this, 'stack-pipeline', {
+  //     pipelineName: 'stack-pipeline',
+  //   });
+  //   const sourceStage = pipeline.addStage({
+  //     stageName: 'source',
+  //   });
+  //   const buildStage = pipeline.addStage({
+  //     stageName: 'build',
+  //     placement: {
+  //       justAfter: sourceStage,
+  //     },
+  //   });
 
-    /*
-    each Pipelineable supplies its own build and deploy actions, and share the source action
-    */
+  //   /*
+  //   each Pipelineable supplies its own build and deploy actions, and share the source action
+  //   */
 
-    const sourceOutput = new Artifact();
-    const sourceAction = new CodeCommitSourceAction({
-      actionName: 'CodeCommit',
-      repository: this.gitRepository,
-      output: sourceOutput,
-    });
+  //   const sourceOutput = new Artifact();
+  //   const sourceAction = new CodeCommitSourceAction({
+  //     actionName: 'CodeCommit',
+  //     repository: this.gitRepository,
+  //     output: sourceOutput,
+  //   });
 
-    sourceStage.addAction(sourceAction);
+  //   sourceStage.addAction(sourceAction);
 
-    const role = new Role(this, 'CodeBuildRole', {
-      assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
-      managedPolicies: [
-        ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
-        ManagedPolicy.fromAwsManagedPolicyName('CloudFrontFullAccess'),
-      ],
-    });
+  //   const role = new Role(this, 'CodeBuildRole', {
+  //     assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
+  //     managedPolicies: [
+  //       ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
+  //       ManagedPolicy.fromAwsManagedPolicyName('CloudFrontFullAccess'),
+  //     ],
+  //   });
 
-    const codeBuild = new Project(this, 'CodeBuildProject', {
-      role,
-      buildSpec: BuildSpec.fromObject({
-        version: 0.2,
-        phases: {
-          install: {
-            'runtime-versions': {
-              nodejs: 10,
-            },
-            commands: [
-              'echo installing dependencies',
-              'echo installing aws cli',
-              'pip install awscli --upgrade --user',
-              'echo check version',
-              'aws --version',
-              `cd websites/${this.name}`,
-              'npm install',
-            ],
-          },
-          build: {
-            commands: ['echo Build started on `date`', 'echo Building web app', `ls`, 'npm run build'],
-            artifacts: {
-              files: ['**/*'],
-              'base-directory': `websites/${this.name}/build`,
-              'discard-paths': 'yes',
-            },
-          },
-          post_build: {
-            commands: [
-              'echo BUILD COMPLETE running sync with s3',
-              `aws s3 rm s3://${this.bucketName}/live --recursive`,
-              `aws s3 cp build s3://${this.bucketName}/live --recursive --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers`,
-              `aws cloudfront create-invalidation --distribution-id ${this.distribution.distributionId} --paths "/index.html"`,
-            ],
-          },
-        },
-      }),
-    });
+  //   const codeBuild = new Project(this, 'CodeBuildProject', {
+  //     role,
+  //     buildSpec: BuildSpec.fromObject({
+  //       version: 0.2,
+  //       phases: {
+  //         install: {
+  //           'runtime-versions': {
+  //             nodejs: 10,
+  //           },
+  //           commands: [
+  //             'echo installing dependencies',
+  //             'echo installing aws cli',
+  //             'pip install awscli --upgrade --user',
+  //             'echo check version',
+  //             'aws --version',
+  //             `cd websites/${this.name}`,
+  //             'npm install',
+  //           ],
+  //         },
+  //         build: {
+  //           commands: ['echo Build started on `date`', 'echo Building web app', `ls`, 'npm run build'],
+  //           artifacts: {
+  //             files: ['**/*'],
+  //             'base-directory': `websites/${this.name}/build`,
+  //             'discard-paths': 'yes',
+  //           },
+  //         },
+  //         post_build: {
+  //           commands: [
+  //             'echo BUILD COMPLETE running sync with s3',
+  //             `aws s3 rm s3://${this.bucketName}/live --recursive`,
+  //             `aws s3 cp build s3://${this.bucketName}/live --recursive --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers`,
+  //             `aws cloudfront create-invalidation --distribution-id ${this.distribution.distributionId} --paths "/index.html"`,
+  //           ],
+  //         },
+  //       },
+  //     }),
+  //   });
 
-    const buildAction = new CodeBuildAction({
-      actionName: 'Build',
-      input: sourceOutput,
-      project: codeBuild,
-    });
+  //   const buildAction = new CodeBuildAction({
+  //     actionName: 'Build',
+  //     input: sourceOutput,
+  //     project: codeBuild,
+  //   });
 
-    buildStage.addAction(buildAction);
-  }
+  //   buildStage.addAction(buildAction);
+  // }
 
   static checkWebsitePathExists(path: string) {
     try {
