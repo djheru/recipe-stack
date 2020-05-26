@@ -68,7 +68,7 @@ export class PillarStack extends cdk.Stack {
     const website = new Website(this, websiteName, {
       name: websiteName,
       environmentName: environmentName,
-      sourcePath: '../websites/recipe-web',
+      sourcePath: 'websites/recipe-web',
       hostedZoneDomainName: 'di-metal.net',
       certificateDomainName,
       gitRepository: this.gitRepository,

@@ -54,7 +54,7 @@ export class Website extends Construct {
     this.buildCloudFrontDistribution();
 
     // Deploy the website if it exists
-    const websiteAssetPath = `${this.sourcePath}/build`;
+    const websiteAssetPath = `../${this.sourcePath}/build`;
     if (Website.checkWebsitePathExists(websiteAssetPath)) {
       this.bucketDeployment(websiteAssetPath);
     }
@@ -222,7 +222,6 @@ export class Website extends Construct {
               nodejs: 10,
             },
             commands: [
-              'cd infrastructure',
               'echo Installing Dependencies',
               'echo Installing AWS CLI',
               'pip install awscli --upgrade --user',
@@ -238,12 +237,12 @@ export class Website extends Construct {
           },
           build: {
             commands: ['echo Build started on `date`', 'echo Building web app', 'CI=true npm run build', 'ls', 'pwd'],
+            artifacts: {
+              files: ['**/*'],
+              'base-directory': `${this.sourcePath}/build`,
+              'discard-paths': 'yes',
+            },
           },
-        },
-        artifacts: {
-          files: ['**/*'],
-          'base-directory': `./build`,
-          'discard-paths': 'yes',
         },
       }),
     });
