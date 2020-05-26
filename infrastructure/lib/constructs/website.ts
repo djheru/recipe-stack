@@ -240,8 +240,8 @@ export class Website extends Construct {
           },
         },
         artifacts: {
-          files: ['**/*'],
-          'base-directory': `${this.sourcePath}/build`,
+          files: ['build/**/*'],
+          'base-directory': this.sourcePath,
         },
       }),
     });
@@ -274,14 +274,11 @@ export class Website extends Construct {
               nodejs: 10,
             },
             commands: [
-              'ls',
-              'pwd',
               'echo Installing Dependencies',
               'echo Installing AWS CLI',
               'pip install awscli --upgrade --user',
               'echo check version',
               'aws --version',
-              `cd ${this.sourcePath}`,
             ],
           },
           pre_build: {
