@@ -282,7 +282,9 @@ export class Website extends Construct {
             ],
           },
           pre_build: {
-            commands: [`aws s3 cp build s3://${this.bucketName}/versions/$CODEBUILD_RESOLVED_SOURCE_VERSION`],
+            commands: [
+              `aws s3 cp build s3://${this.bucketName}/versions/$CODEBUILD_RESOLVED_SOURCE_VERSION --recursive`,
+            ],
           },
           build: {
             commands: [
