@@ -238,11 +238,11 @@ export class Website extends Construct {
           build: {
             commands: ['echo Build started on `date`', 'echo Building web app', 'CI=true npm run build'],
           },
-          artifacts: {
-            files: ['**/*'],
-            'base-directory': `${this.sourcePath}`,
-            'discard-paths': 'yes',
-          },
+        },
+        artifacts: {
+          files: ['**/*'],
+          'base-directory': `${this.sourcePath}`,
+          'discard-paths': 'yes',
         },
       }),
     });
