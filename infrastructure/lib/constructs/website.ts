@@ -236,12 +236,12 @@ export class Website extends Construct {
             commands: ['echo Running Tests', 'CI=true npm test'],
           },
           build: {
-            commands: ['echo Build started on `date`', 'echo Building web app', 'CI=true npm run build', 'ls', 'pwd'],
-            artifacts: {
-              files: ['**/*'],
-              'base-directory': `${this.sourcePath}/build`,
-              'discard-paths': 'yes',
-            },
+            commands: ['echo Build started on `date`', 'echo Building web app', 'CI=true npm run build'],
+          },
+          artifacts: {
+            files: ['**/*'],
+            'base-directory': `${this.sourcePath}`,
+            'discard-paths': 'yes',
           },
         },
       }),
@@ -275,6 +275,8 @@ export class Website extends Construct {
               nodejs: 10,
             },
             commands: [
+              'ls',
+              'pwd',
               'echo Installing Dependencies',
               'echo Installing AWS CLI',
               'pip install awscli --upgrade --user',
