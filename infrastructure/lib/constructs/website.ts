@@ -281,12 +281,13 @@ export class Website extends Construct {
               'pip install awscli --upgrade --user',
               'echo check version',
               'aws --version',
+              'printenv',
               'echo "version: $CODEBUILD_RESOLVED_SOURCE_VERSION"',
             ],
           },
           pre_build: {
             commands: [
-              `aws s3 cp build s3://${this.bucketName}/versions/$CODEBUILD_RESOLVED_SOURCE_VERSION --recursive`,
+              `aws s3 cp "build s3://${this.bucketName}/versions/$CODEBUILD_RESOLVED_SOURCE_VERSION" --recursive`,
             ],
           },
           build: {
