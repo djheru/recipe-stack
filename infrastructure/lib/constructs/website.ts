@@ -189,6 +189,7 @@ export class Website extends Construct {
       managedPolicies: [
         ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
         ManagedPolicy.fromAwsManagedPolicyName('CloudFrontFullAccess'),
+        ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLogsFullAccess'),
       ],
     });
 
