@@ -1,17 +1,9 @@
 import { Construct } from '@aws-cdk/core';
-import { Artifact, IAction, IStage, Pipeline, StageOptions } from '@aws-cdk/aws-codepipeline';
-import { BuildSpec, PipelineProject, Project } from '@aws-cdk/aws-codebuild';
+import { Artifact, IAction, IStage, Pipeline } from '@aws-cdk/aws-codepipeline';
 import { Role, ManagedPolicy, ServicePrincipal } from '@aws-cdk/aws-iam';
-import { CodeBuildAction, CodeCommitSourceAction, S3DeployAction } from '@aws-cdk/aws-codepipeline-actions';
-import { existsSync } from 'fs';
+import { CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 import { Repository } from '@aws-cdk/aws-codecommit';
-import { CloudFrontTarget } from '@aws-cdk/aws-route53-targets';
-import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
-import { CloudFrontWebDistribution, SSLMethod, SecurityPolicyProtocol } from '@aws-cdk/aws-cloudfront';
-import { DnsValidatedCertificate } from '@aws-cdk/aws-certificatemanager';
-import { HostedZone, ARecord, AddressRecordTarget, IHostedZone } from '@aws-cdk/aws-route53';
 import { Environment } from '../pillar-stack';
-import { buildBuildSpec, deployBuildSpec } from '../utils/buildSpec.js';
 
 export interface Pipelineable {
   getBuildActions({
@@ -66,8 +58,9 @@ export class PipelineManager extends Construct {
     this.sourceOutput = new Artifact();
     this.buildOutput = new Artifact();
     this.deployOutput = new Artifact();
+  }
 
-    this.buildRole();
+  public compose() {
     this.buildPipeline();
     this.buildSourceStage();
     this.buildBuildStage();
@@ -87,19 +80,6 @@ export class PipelineManager extends Construct {
         deployOutputArtifact: this.deployOutput,
       })
       .forEach((action) => this.deployActions.add(action));
-  }
-
-  private buildRole() {
-    const roleName = `${this.name}-code-build-role`;
-    this.role = new Role(this, roleName, {
-      roleName,
-      assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
-      managedPolicies: [
-        ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
-        ManagedPolicy.fromAwsManagedPolicyName('CloudFrontFullAccess'),
-        ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLogsFullAccess'),
-      ],
-    });
   }
 
   private buildPipeline() {
@@ -125,26 +105,22 @@ export class PipelineManager extends Construct {
   }
   private buildBuildStage() {
     const actions = Array.from(this.buildActions);
-    if (actions.length) {
-      this.buildStage = this.pipeline.addStage({
-        stageName: `build-${this.environmentName}`,
-        actions,
-        placement: {
-          justAfter: this.sourceStage,
-        },
-      });
-    }
+    this.buildStage = this.pipeline.addStage({
+      stageName: `build-${this.environmentName}`,
+      actions,
+      placement: {
+        justAfter: this.sourceStage,
+      },
+    });
   }
   private buildDeployStage() {
     const actions = Array.from(this.deployActions);
-    if (actions.length) {
-      this.deployStage = this.pipeline.addStage({
-        stageName: `deploy-${this.environmentName}`,
-        actions,
-        placement: {
-          justAfter: this.buildStage,
-        },
-      });
-    }
+    this.deployStage = this.pipeline.addStage({
+      stageName: `deploy-${this.environmentName}`,
+      actions,
+      placement: {
+        justAfter: this.buildStage,
+      },
+    });
   }
 }

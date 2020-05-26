@@ -1,3 +1,4 @@
+import { PipelineManager } from './constructs/pipelineManager';
 import { Repository } from '@aws-cdk/aws-codecommit';
 import { Website } from './constructs/website';
 import * as cdk from '@aws-cdk/core';
@@ -10,6 +11,7 @@ import { DbClusterServerless } from './constructs/dbClusterServerless';
 export type Environment = 'demo' | 'dev' | 'prod' | 'prototype';
 
 type Stage = {
+  pipelineManager?: PipelineManager;
   pillarVpc?: PillarVpc;
   bastionHost?: BastionHostInstance;
   assetBucket?: AssetBucket;
@@ -71,10 +73,22 @@ export class PillarStack extends cdk.Stack {
       sourcePath: 'websites/recipe-web',
       hostedZoneDomainName: 'di-metal.net',
       certificateDomainName,
+    });
+
+    const pipelineManagerName = `${environmentName}-pipeline-manager`;
+    const pipelineManager = new PipelineManager(this, pipelineManagerName, {
+      name: pipelineManagerName,
+      environmentName,
       gitRepository: this.gitRepository,
     });
 
+    pipelineManager.registerConstruct(website);
+
+    // Called after all constructs are registered
+    pipelineManager.compose();
+
     const stage: Stage = {
+      pipelineManager,
       pillarVpc,
       bastionHost,
       assetBucket,

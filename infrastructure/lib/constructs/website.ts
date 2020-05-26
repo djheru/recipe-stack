@@ -21,7 +21,6 @@ export interface WebsiteProps {
   sourcePath: string;
   hostedZoneDomainName: string;
   certificateDomainName: string;
-  gitRepository: Repository;
 }
 
 export class Website extends Construct implements Pipelineable {
@@ -37,19 +36,17 @@ export class Website extends Construct implements Pipelineable {
   public distribution: CloudFrontWebDistribution;
   public deployment: BucketDeployment;
   public aRecord: ARecord;
-  public gitRepository: Repository;
   public deployRole: Role;
 
   constructor(scope: Construct, id: string, props: WebsiteProps) {
     super(scope, id);
-    const { name, environmentName, sourcePath, hostedZoneDomainName, certificateDomainName, gitRepository } = props;
+    const { name, environmentName, sourcePath, hostedZoneDomainName, certificateDomainName } = props;
 
     this.name = name;
     this.environmentName = environmentName;
     this.sourcePath = sourcePath;
     this.hostedZoneDomainName = hostedZoneDomainName;
     this.certificateDomainName = certificateDomainName;
-    this.gitRepository = gitRepository;
 
     this.hostedZoneLookup();
     this.buildCertificate();
