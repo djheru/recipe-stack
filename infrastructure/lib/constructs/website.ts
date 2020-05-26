@@ -284,7 +284,7 @@ export class Website extends Construct {
             ],
           },
           pre_build: {
-            commands: [`aws s3 cp "build s3://${this.bucketName}/versions/${Date.now()}" --recursive`],
+            commands: [`aws s3 cp build s3://${this.bucketName}/versions/${Date.now()} --recursive`],
           },
           build: {
             commands: [
