@@ -281,6 +281,7 @@ export class Website extends Construct {
               'pip install awscli --upgrade --user',
               'echo check version',
               'aws --version',
+              'echo "version: $CODEBUILD_RESOLVED_SOURCE_VERSION"',
             ],
           },
           pre_build: {
