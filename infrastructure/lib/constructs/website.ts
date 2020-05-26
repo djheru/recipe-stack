@@ -36,7 +36,7 @@ export class Website extends Construct implements Pipelineable {
   public distribution: CloudFrontWebDistribution;
   public deployment: BucketDeployment;
   public aRecord: ARecord;
-  public deployRole: Role;
+  public pipelineRole: Role;
 
   constructor(scope: Construct, id: string, props: WebsiteProps) {
     super(scope, id);
@@ -181,12 +181,12 @@ export class Website extends Construct implements Pipelineable {
     });
   }
 
-  private getRole() {
-    if (this.deployRole) {
-      return this.deployRole;
+  private getPipelineRole() {
+    if (this.pipelineRole) {
+      return this.pipelineRole;
     }
     const roleName = `${this.name}-code-build-role`;
-    this.deployRole = new Role(this, roleName, {
+    this.pipelineRole = new Role(this, roleName, {
       roleName,
       assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
       managedPolicies: [
@@ -195,7 +195,7 @@ export class Website extends Construct implements Pipelineable {
         ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLogsFullAccess'),
       ],
     });
-    return this.deployRole;
+    return this.pipelineRole;
   }
 
   public getBuildActions({
@@ -205,7 +205,7 @@ export class Website extends Construct implements Pipelineable {
     buildInputArtifact: Artifact;
     buildOutputArtifact: Artifact;
   }) {
-    const role = this.getRole();
+    const role = this.getPipelineRole();
     const buildProjectName = `${this.name}-build-project`;
     const buildProjectBuildSpec = buildWebsiteBuildSpec({
       name: this.name,
@@ -228,7 +228,7 @@ export class Website extends Construct implements Pipelineable {
   }
 
   public getDeployActions({ deployInputArtifact }: { deployInputArtifact: Artifact; deployOutputArtifact?: Artifact }) {
-    const role = this.getRole();
+    const role = this.getPipelineRole();
     const deployProjectName = `${this.name}-deploy-project`;
     const deployProjectBuildSpec = deployWebsiteBuildSpec({
       name: this.name,
