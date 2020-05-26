@@ -12,7 +12,7 @@ import { CloudFrontWebDistribution, SSLMethod, SecurityPolicyProtocol } from '@a
 import { DnsValidatedCertificate } from '@aws-cdk/aws-certificatemanager';
 import { HostedZone, ARecord, AddressRecordTarget, IHostedZone } from '@aws-cdk/aws-route53';
 import { Environment } from '../pillar-stack';
-import { buildBuildSpec, deployBuildSpec } from '../utils/buildSpec.js';
+import { buildWebsiteBuildSpec, deployWebsiteBuildSpec } from '../utils/buildSpec.js';
 import { Pipelineable } from './pipelineManager';
 
 export interface WebsiteProps {
@@ -210,7 +210,7 @@ export class Website extends Construct implements Pipelineable {
   }) {
     const role = this.getRole();
     const buildProjectName = `${this.name}-build-project`;
-    const buildProjectBuildSpec = buildBuildSpec({
+    const buildProjectBuildSpec = buildWebsiteBuildSpec({
       name: this.name,
       sourcePath: this.sourcePath,
     });
@@ -233,7 +233,7 @@ export class Website extends Construct implements Pipelineable {
   public getDeployActions({ deployInputArtifact }: { deployInputArtifact: Artifact; deployOutputArtifact?: Artifact }) {
     const role = this.getRole();
     const deployProjectName = `${this.name}-deploy-project`;
-    const deployProjectBuildSpec = deployBuildSpec({
+    const deployProjectBuildSpec = deployWebsiteBuildSpec({
       name: this.name,
       bucketName: this.bucketName,
       distributionId: this.distribution.distributionId,
