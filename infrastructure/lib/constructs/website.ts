@@ -237,12 +237,12 @@ export class Website extends Construct {
             commands: ['echo Running Tests', 'CI=true npm test'],
           },
           build: {
-            commands: ['echo Build started on `date`', 'echo Building web app', 'CI=true npm run build'],
+            commands: ['echo Build started on `date`', 'echo Building web app', 'CI=true npm run build', 'ls', 'pwd'],
           },
         },
         artifacts: {
           files: ['**/*'],
-          'base-directory': `websites/${this.name}/build`,
+          'base-directory': `${this.sourcePath}/build`,
           'discard-paths': 'yes',
         },
       }),
@@ -258,7 +258,7 @@ export class Website extends Construct {
       runOrder: 2,
     });
     const buildStage = pipeline.addStage({
-      stageName: 'build',
+      stageName: `build-${this.environmentName}`,
       actions: [buildAction],
       placement: {
         justAfter: sourceStage,
@@ -311,7 +311,7 @@ export class Website extends Construct {
       runOrder: 3,
     });
     const deployStage = pipeline.addStage({
-      stageName: 'deploy',
+      stageName: `deploy-${this.environmentName}`,
       actions: [deployAction],
       placement: {
         justAfter: buildStage,
