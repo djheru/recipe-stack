@@ -213,6 +213,7 @@ export class Website extends Construct {
 
     const buildProjectName = `${this.name}-build-project`;
     const buildProject = new PipelineProject(this, buildProjectName, {
+      projectName: buildProjectName,
       role,
       buildSpec: BuildSpec.fromObject({
         version: '0.2',
@@ -265,6 +266,7 @@ export class Website extends Construct {
 
     const deployProjectName = `${this.name}-deploy-project`;
     const deployProject = new PipelineProject(this, deployProjectName, {
+      projectName: deployProjectName,
       role,
       buildSpec: BuildSpec.fromObject({
         version: '0.2',
