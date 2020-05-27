@@ -2,7 +2,7 @@ import { Repository } from '@aws-cdk/aws-codecommit';
 import { Artifact, IAction, IStage, Pipeline } from '@aws-cdk/aws-codepipeline';
 import { CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 import { Role } from '@aws-cdk/aws-iam';
-import { Construct } from '@aws-cdk/core';
+import { Construct, Tag } from '@aws-cdk/core';
 import { Environment } from '../pillar-stack';
 
 export type GetPipelineActionsProps = {
@@ -46,6 +46,10 @@ export class PipelineManager extends Construct {
     this.environmentName = environmentName;
     this.gitRepository = gitRepository;
     this.sourceOutput = new Artifact();
+
+    Tag.add(this, 'name', name);
+    Tag.add(this, 'environmentName', environmentName);
+    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
   }
 
   private buildPipeline() {

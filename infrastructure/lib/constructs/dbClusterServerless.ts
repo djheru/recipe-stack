@@ -1,6 +1,6 @@
 import { IConnectable, Port, SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
 import { CfnDBCluster, CfnDBSubnetGroup, DatabaseSecret } from '@aws-cdk/aws-rds';
-import { CfnOutput, Construct } from '@aws-cdk/core';
+import { CfnOutput, Construct, Tag } from '@aws-cdk/core';
 import { Environment } from './../pillar-stack';
 
 export interface DbClusterServerlessProps {
@@ -59,6 +59,10 @@ export class DbClusterServerless extends Construct {
     this.buildSubnetGroup();
     this.buildSecurityGroup();
     this.buildInstance();
+
+    Tag.add(this, 'name', name);
+    Tag.add(this, 'environmentName', environmentName);
+    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
   }
 
   private buildSecret() {

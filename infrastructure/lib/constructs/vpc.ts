@@ -1,5 +1,5 @@
 import { GatewayVpcEndpointAwsService, SubnetType, Vpc, VpcProps } from '@aws-cdk/aws-ec2';
-import { CfnOutput, Construct } from '@aws-cdk/core';
+import { CfnOutput, Construct, Tag } from '@aws-cdk/core';
 import { Environment } from '../pillar-stack';
 
 export interface VpcConstructProps extends VpcProps {
@@ -68,6 +68,10 @@ export class PillarVpc extends Construct {
     const params = { ...defaultProps, ...restProps };
     this.instance = new Vpc(this, vpcId, params);
     this.groupSubnets();
+
+    Tag.add(this, 'name', name);
+    Tag.add(this, 'environmentName', environmentName);
+    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
   }
 
   groupSubnets() {

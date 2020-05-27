@@ -17,7 +17,7 @@ import {
   Login,
   ParameterGroup,
 } from '@aws-cdk/aws-rds';
-import { CfnOutput, Construct, Duration, RemovalPolicy } from '@aws-cdk/core';
+import { CfnOutput, Construct, Duration, RemovalPolicy, Tag } from '@aws-cdk/core';
 import { Environment } from './../pillar-stack';
 
 export interface DbClusterProps {
@@ -104,6 +104,10 @@ export class DbCluster extends Construct {
     this.port = params.port;
 
     this.allowConnections();
+
+    Tag.add(this, 'name', name);
+    Tag.add(this, 'environmentName', environmentName);
+    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
   }
 
   private exportValue(params: { exportName: string; value: string; description: string }) {

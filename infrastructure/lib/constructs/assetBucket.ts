@@ -1,5 +1,5 @@
 import { BlockPublicAccess, Bucket, BucketEncryption, BucketProps } from '@aws-cdk/aws-s3';
-import { Construct, RemovalPolicy } from '@aws-cdk/core';
+import { Construct, RemovalPolicy, Tag } from '@aws-cdk/core';
 import { Environment } from './../pillar-stack';
 
 export interface AssetBucketProps extends BucketProps {
@@ -26,5 +26,9 @@ export class AssetBucket extends Construct {
       ...defaults,
       ...restProps,
     });
+
+    Tag.add(this, 'name', name);
+    Tag.add(this, 'environmentName', environmentName);
+    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
   }
 }

@@ -4,7 +4,7 @@ import { AddressRecordTarget, ARecord, HostedZone, IHostedZone } from '@aws-cdk/
 import { CloudFrontTarget } from '@aws-cdk/aws-route53-targets';
 import { Bucket } from '@aws-cdk/aws-s3';
 import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
-import { Construct, RemovalPolicy } from '@aws-cdk/core';
+import { Construct, RemovalPolicy, Tag } from '@aws-cdk/core';
 import { Environment } from '../pillar-stack';
 import { WebsitePipeline } from './websitePipeline';
 
@@ -52,6 +52,10 @@ export class Website extends WebsitePipeline {
     }
 
     this.buildARecord();
+
+    Tag.add(this, 'name', name);
+    Tag.add(this, 'environmentName', environmentName);
+    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
   }
 
   private hostedZoneLookup() {

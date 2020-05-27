@@ -7,7 +7,7 @@ import {
   Peer,
   SubnetType,
 } from '@aws-cdk/aws-ec2';
-import { Construct } from '@aws-cdk/core';
+import { Construct, Tag } from '@aws-cdk/core';
 import { Environment } from '../pillar-stack';
 
 export interface BastionHostInstanceConstructProps extends BastionHostLinuxProps {
@@ -66,5 +66,9 @@ export class BastionHostInstance extends Construct {
       ...restProps,
     });
     this.instance.allowSshAccessFrom(Peer.anyIpv4());
+
+    Tag.add(this, 'name', name);
+    Tag.add(this, 'environmentName', environmentName);
+    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
   }
 }
