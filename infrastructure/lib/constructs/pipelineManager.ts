@@ -1,25 +1,18 @@
 import { Construct } from '@aws-cdk/core';
 import { Artifact, IAction, IStage, Pipeline } from '@aws-cdk/aws-codepipeline';
-import { Role, ManagedPolicy, ServicePrincipal } from '@aws-cdk/aws-iam';
+import { Role } from '@aws-cdk/aws-iam';
 import { CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 import { Repository } from '@aws-cdk/aws-codecommit';
 import { Environment } from '../pillar-stack';
 
+export type GetPipelineActionsProps = {
+  inputArtifact: Artifact;
+  outputArtifact?: Artifact;
+};
+
 export interface Pipelineable {
-  getBuildActions({
-    buildInputArtifact,
-    buildOutputArtifact,
-  }: {
-    buildInputArtifact: Artifact;
-    buildOutputArtifact: Artifact;
-  }): IAction[];
-  getDeployActions({
-    deployInputArtifact,
-    deployOutputArtifact,
-  }: {
-    deployInputArtifact: Artifact;
-    deployOutputArtifact?: Artifact;
-  }): IAction[];
+  getBuildActions(buildArtifacts: GetPipelineActionsProps): IAction[];
+  getDeployActions(deployArtifacts: GetPipelineActionsProps): IAction[];
 }
 
 export interface PipelineManagerProps {
@@ -36,14 +29,11 @@ export class PipelineManager extends Construct {
   public role: Role;
   public pipeline: Pipeline;
 
-  public sourceStage: IStage;
   public sourceOutput: Artifact;
 
+  public sourceStage: IStage;
   public buildStage: IStage;
-  public buildOutput: Artifact;
-
   public deployStage: IStage;
-  public deployOutput: Artifact;
 
   private buildActions: Set<IAction> = new Set();
   private deployActions: Set<IAction> = new Set();
@@ -56,30 +46,6 @@ export class PipelineManager extends Construct {
     this.environmentName = environmentName;
     this.gitRepository = gitRepository;
     this.sourceOutput = new Artifact();
-    this.buildOutput = new Artifact();
-    this.deployOutput = new Artifact();
-  }
-
-  public compose() {
-    this.buildPipeline();
-    this.buildSourceStage();
-    this.buildBuildStage();
-    this.buildDeployStage();
-  }
-
-  public registerConstruct(construct: Pipelineable) {
-    construct
-      .getBuildActions({
-        buildInputArtifact: this.sourceOutput,
-        buildOutputArtifact: this.buildOutput,
-      })
-      .forEach((action) => this.buildActions.add(action));
-    construct
-      .getDeployActions({
-        deployInputArtifact: this.buildOutput,
-        deployOutputArtifact: this.deployOutput,
-      })
-      .forEach((action) => this.deployActions.add(action));
   }
 
   private buildPipeline() {
@@ -103,6 +69,7 @@ export class PipelineManager extends Construct {
       actions: [sourceAction],
     });
   }
+
   private buildBuildStage() {
     const actions = Array.from(this.buildActions);
     this.buildStage = this.pipeline.addStage({
@@ -113,6 +80,7 @@ export class PipelineManager extends Construct {
       },
     });
   }
+
   private buildDeployStage() {
     const actions = Array.from(this.deployActions);
     this.deployStage = this.pipeline.addStage({
@@ -122,5 +90,32 @@ export class PipelineManager extends Construct {
         justAfter: this.buildStage,
       },
     });
+  }
+
+  private composePipeline() {
+    this.buildPipeline();
+    this.buildSourceStage();
+    this.buildBuildStage();
+    this.buildDeployStage();
+  }
+
+  public registerConstructs(constructs: Pipelineable[]) {
+    constructs.forEach((construct) => {
+      const buildOutput = new Artifact();
+      const deployOutput = new Artifact();
+      construct
+        .getBuildActions({
+          inputArtifact: this.sourceOutput,
+          outputArtifact: buildOutput,
+        })
+        .forEach((action) => this.buildActions.add(action));
+      construct
+        .getDeployActions({
+          inputArtifact: buildOutput,
+          outputArtifact: deployOutput,
+        })
+        .forEach((action) => this.deployActions.add(action));
+    });
+    this.composePipeline();
   }
 }

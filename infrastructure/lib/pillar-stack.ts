@@ -18,6 +18,7 @@ type Stage = {
   // usersDbCluster?: DbCluster;
   usersDbCluster?: DbClusterServerless;
   website?: Website;
+  adminWebsite?: Website;
 };
 
 export class PillarStack extends cdk.Stack {
@@ -75,6 +76,17 @@ export class PillarStack extends cdk.Stack {
       certificateDomainName,
     });
 
+    const adminCertificateDomainName =
+      environmentName === 'prod' ? 'admin.di-metal.net' : `${environmentName}.admin.di-metal.net`;
+    const adminWebsiteName = `${environmentName}-recipe-admin`;
+    const adminWebsite = new Website(this, adminWebsiteName, {
+      name: adminWebsiteName,
+      environmentName: environmentName,
+      sourcePath: 'websites/recipe-admin',
+      hostedZoneDomainName: 'di-metal.net',
+      certificateDomainName: adminCertificateDomainName,
+    });
+
     const pipelineManagerName = `${environmentName}-pipeline-manager`;
     const pipelineManager = new PipelineManager(this, pipelineManagerName, {
       name: pipelineManagerName,
@@ -82,10 +94,7 @@ export class PillarStack extends cdk.Stack {
       gitRepository: this.gitRepository,
     });
 
-    pipelineManager.registerConstruct(website);
-
-    // Called after all constructs are registered
-    pipelineManager.compose();
+    pipelineManager.registerConstructs([website, adminWebsite]);
 
     const stage: Stage = {
       pipelineManager,
@@ -94,6 +103,7 @@ export class PillarStack extends cdk.Stack {
       assetBucket,
       usersDbCluster,
       website,
+      adminWebsite,
     };
 
     if (!this.stages) {
