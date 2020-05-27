@@ -24,11 +24,12 @@
     "npm": ">= 3.0.0"
   },
   "scripts": {
-    "test": "npm run lint && npm run jest",
-    "lint": "eslint src/. test/. --config .eslintrc.json",
-    "dev": "nodemon src/",
-    "start": "node src/",
-    "jest": "jest  --forceExit"
+    "test": "npm run build && npm run jest",
+    "dev": "ts-node-dev --no-notify src/",
+    "start": "npm run build && node lib/",
+    "jest": "jest  --forceExit",
+    "build": "shx rm -rf lib/ && tsc",
+    "docker": "docker-compose -f ../docker-compose.yml up --build -V"
   },
   "standard": {
     "env": [
@@ -36,6 +37,7 @@
     ],
     "ignore": []
   },
+  "types": "lib/",
   "dependencies": {
     "@feathersjs/authentication": "^4.5.3",
     "@feathersjs/authentication-local": "^4.5.4",
@@ -56,9 +58,19 @@
     "winston": "^3.2.1"
   },
   "devDependencies": {
+    "@types/compression": "^1.7.0",
+    "@types/cors": "^2.8.6",
+    "@types/helmet": "0.0.47",
+    "@types/jest": "^25.2.3",
+    "@types/jsonwebtoken": "^8.5.0",
+    "@types/serve-favicon": "^2.5.0",
     "axios": "^0.19.2",
-    "eslint": "^6.8.0",
     "jest": "^26.0.1",
-    "nodemon": "^2.0.4"
+    "nodemon": "^2.0.4",
+    "shx": "^0.3.2",
+    "ts-jest": "^26.0.0",
+    "ts-node-dev": "^1.0.0-pre.44",
+    "tslint": "^6.1.2",
+    "typescript": "^3.9.3"
   }
 }

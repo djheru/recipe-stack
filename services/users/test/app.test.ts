@@ -1,9 +1,12 @@
-const axios = require('axios');
-const url = require('url');
-const app = require('../src/app');
+import assert from 'assert';
+import { Server } from 'http';
+import url from 'url';
+import axios from 'axios';
+
+import app from '../src/app';
 
 const port = app.get('port') || 8998;
-const getUrl = pathname => url.format({
+const getUrl = (pathname?: string) => url.format({
   hostname: app.get('host') || 'localhost',
   protocol: 'http',
   port,
@@ -11,7 +14,7 @@ const getUrl = pathname => url.format({
 });
 
 describe('Feathers application tests (with jest)', () => {
-  let server;
+  let server: Server;
 
   beforeAll(done => {
     server = app.listen(port);
@@ -33,6 +36,7 @@ describe('Feathers application tests (with jest)', () => {
   describe('404', () => {
     it('shows a 404 HTML page', async () => {
       expect.assertions(2);
+
       try {
         await axios.get(getUrl('path/to/nowhere'), {
           headers: {

@@ -1,11 +1,12 @@
-/* eslint-disable no-console */
-
 // users-model.js - A KnexJS
 // 
 // See http://knexjs.org/
 // for more of what you can do here.
-module.exports = function (app) {
-  const db = app.get('knexClient');
+import { Application } from '../declarations';
+import Knex from 'knex';
+
+export default function (app: Application) {
+  const db: Knex = app.get('knexClient');
   const tableName = 'users';
   
   db.schema.hasTable(tableName).then(exists => {
@@ -24,4 +25,4 @@ module.exports = function (app) {
   });
 
   return db;
-};
+}

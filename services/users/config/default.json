@@ -9,11 +9,8 @@
   "authentication": {
     "entity": "user",
     "service": "users",
-    "secret": "9RrJ11qDGudbSilj1CoyNrfoMW0=",
-    "authStrategies": [
-      "jwt",
-      "local"
-    ],
+    "secret": "0f3iAHnMVnghK+vEMzLKiNPJoPQ=",
+    "authStrategies": ["jwt", "local"],
     "jwtOptions": {
       "header": {
         "typ": "access"
@@ -30,6 +27,11 @@
   },
   "postgres": {
     "client": "pg",
-    "connection": "postgres://postgres:@localhost:5432/users"
+    "connection": {
+      "host": "postgres",
+      "user": "USERS_DB_USERNAME",
+      "password": "USERS_DB_PASSWORD",
+      "database": "USERS_DB_DATABASE_NAME"
+    }
   }
 }
