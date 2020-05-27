@@ -98,5 +98,9 @@ export class PillarStack extends cdk.Stack {
     } else {
       this.stages[environmentName] = stage;
     }
+
+    cdk.Tag.add(this, 'name', this.id);
+    cdk.Tag.add(this, 'environmentName', environmentName);
+    cdk.Tag.add(this, 'description', `Stack for ${this.id} running in the ${environmentName} environment`);
   }
 }
