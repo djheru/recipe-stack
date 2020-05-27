@@ -1,12 +1,11 @@
-import { PipelineManager } from './constructs/pipelineManager';
 import { Repository } from '@aws-cdk/aws-codecommit';
-import { Website } from './constructs/website';
 import * as cdk from '@aws-cdk/core';
-import { PillarVpc } from './constructs/vpc';
-import { BastionHostInstance } from './constructs/bastionHostInstance';
 import { AssetBucket } from './constructs/assetBucket';
-// import { DbCluster } from './constructs/dbCluster';
+import { BastionHostInstance } from './constructs/bastionHostInstance';
 import { DbClusterServerless } from './constructs/dbClusterServerless';
+import { PipelineManager } from './constructs/pipelineManager';
+import { PillarVpc } from './constructs/vpc';
+import { Website } from './constructs/website';
 
 export type Environment = 'demo' | 'dev' | 'prod' | 'prototype';
 
@@ -15,7 +14,6 @@ type Stage = {
   pillarVpc?: PillarVpc;
   bastionHost?: BastionHostInstance;
   assetBucket?: AssetBucket;
-  // usersDbCluster?: DbCluster;
   usersDbCluster?: DbClusterServerless;
   website?: Website;
   adminWebsite?: Website;
@@ -36,7 +34,15 @@ export class PillarStack extends cdk.Stack {
       description: `Git repository for ${id}`,
     });
   }
+
   public buildStage(environmentName: Environment) {
+    const pipelineManagerName = `${environmentName}-pipeline-manager`;
+    const pipelineManager = new PipelineManager(this, pipelineManagerName, {
+      name: pipelineManagerName,
+      environmentName,
+      gitRepository: this.gitRepository,
+    });
+
     const vpcName = `${environmentName}-vpc`;
     const pillarVpc = new PillarVpc(this, vpcName, {
       name: vpcName,
@@ -76,25 +82,7 @@ export class PillarStack extends cdk.Stack {
       certificateDomainName,
     });
 
-    const adminCertificateDomainName =
-      environmentName === 'prod' ? 'admin.di-metal.net' : `${environmentName}.admin.di-metal.net`;
-    const adminWebsiteName = `${environmentName}-recipe-admin`;
-    const adminWebsite = new Website(this, adminWebsiteName, {
-      name: adminWebsiteName,
-      environmentName: environmentName,
-      sourcePath: 'websites/recipe-admin',
-      hostedZoneDomainName: 'di-metal.net',
-      certificateDomainName: adminCertificateDomainName,
-    });
-
-    const pipelineManagerName = `${environmentName}-pipeline-manager`;
-    const pipelineManager = new PipelineManager(this, pipelineManagerName, {
-      name: pipelineManagerName,
-      environmentName,
-      gitRepository: this.gitRepository,
-    });
-
-    pipelineManager.registerConstructs([website, adminWebsite]);
+    pipelineManager.registerConstructs([website]);
 
     const stage: Stage = {
       pipelineManager,
@@ -103,7 +91,6 @@ export class PillarStack extends cdk.Stack {
       assetBucket,
       usersDbCluster,
       website,
-      adminWebsite,
     };
 
     if (!this.stages) {

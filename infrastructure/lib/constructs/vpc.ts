@@ -1,5 +1,5 @@
-import { Construct, CfnOutput } from '@aws-cdk/core';
-import { GatewayVpcEndpointAwsService, Vpc, SubnetType, VpcProps, SecurityGroup, Port, Peer } from '@aws-cdk/aws-ec2';
+import { GatewayVpcEndpointAwsService, SubnetType, Vpc, VpcProps } from '@aws-cdk/aws-ec2';
+import { CfnOutput, Construct } from '@aws-cdk/core';
 import { Environment } from '../pillar-stack';
 
 export interface VpcConstructProps extends VpcProps {

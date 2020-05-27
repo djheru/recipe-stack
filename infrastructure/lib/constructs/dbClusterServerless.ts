@@ -1,7 +1,7 @@
-import { IConnectable, SecurityGroup, Vpc, Port } from '@aws-cdk/aws-ec2';
-import { Construct, CfnOutput } from '@aws-cdk/core';
+import { IConnectable, Port, SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
+import { CfnDBCluster, CfnDBSubnetGroup, DatabaseSecret } from '@aws-cdk/aws-rds';
+import { CfnOutput, Construct } from '@aws-cdk/core';
 import { Environment } from './../pillar-stack';
-import { CfnDBCluster, DatabaseSecret, CfnDBSubnetGroup } from '@aws-cdk/aws-rds';
 
 export interface DbClusterServerlessProps {
   name: string;

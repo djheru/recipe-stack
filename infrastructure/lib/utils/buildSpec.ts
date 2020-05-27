@@ -1,3 +1,6 @@
+const getS3VersionPath = (bucketName: string) => `${bucketName}/versions/${Date.now()}`;
+const s3GrantsUri = 'http://acs.amazonaws.com/groups/global/AllUsers';
+
 export const buildWebsiteBuildSpec = ({ name, sourcePath }: { name: string; sourcePath: string }) => ({
   version: '0.2',
   phases: {
@@ -30,8 +33,6 @@ export const buildWebsiteBuildSpec = ({ name, sourcePath }: { name: string; sour
   },
 });
 
-const getS3VersionPath = (bucketName: string) => `${bucketName}/versions/${Date.now()}`;
-const s3GrantsUri = 'http://acs.amazonaws.com/groups/global/AllUsers';
 export const deployWebsiteBuildSpec = ({
   bucketName,
   distributionId,

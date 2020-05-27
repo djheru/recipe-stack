@@ -1,10 +1,10 @@
-import { Artifact } from '@aws-cdk/aws-codepipeline';
-import { BuildSpec, PipelineProject } from '@aws-cdk/aws-codebuild';
-import { Role, ManagedPolicy, ServicePrincipal } from '@aws-cdk/aws-iam';
-import { CodeBuildAction } from '@aws-cdk/aws-codepipeline-actions';
-import { existsSync } from 'fs';
-import { CfnOutput, Construct } from '@aws-cdk/core';
 import { CloudFrontWebDistribution } from '@aws-cdk/aws-cloudfront';
+import { BuildSpec, PipelineProject } from '@aws-cdk/aws-codebuild';
+import { Artifact } from '@aws-cdk/aws-codepipeline';
+import { CodeBuildAction } from '@aws-cdk/aws-codepipeline-actions';
+import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
+import { CfnOutput, Construct } from '@aws-cdk/core';
+import { existsSync } from 'fs';
 import { Environment } from '../pillar-stack';
 import { buildWebsiteBuildSpec, deployWebsiteBuildSpec } from '../utils/buildSpec.js';
 import { GetPipelineActionsProps, Pipelineable } from './pipelineManager';

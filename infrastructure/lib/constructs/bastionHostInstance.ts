@@ -1,13 +1,13 @@
-import { Construct } from '@aws-cdk/core';
 import {
   BastionHostLinux,
   BastionHostLinuxProps,
-  Peer,
-  SubnetType,
-  InstanceType,
   InstanceClass,
   InstanceSize,
+  InstanceType,
+  Peer,
+  SubnetType,
 } from '@aws-cdk/aws-ec2';
+import { Construct } from '@aws-cdk/core';
 import { Environment } from '../pillar-stack';
 
 export interface BastionHostInstanceConstructProps extends BastionHostLinuxProps {

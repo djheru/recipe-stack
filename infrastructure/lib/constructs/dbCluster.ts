@@ -1,23 +1,23 @@
-import { Construct, Duration, RemovalPolicy, CfnOutput } from '@aws-cdk/core';
 import {
-  InstanceType,
+  IConnectable,
   InstanceClass,
+  InstanceProps,
   InstanceSize,
+  InstanceType,
+  Port,
   SubnetType,
   Vpc,
-  InstanceProps,
-  IConnectable,
-  Port,
 } from '@aws-cdk/aws-ec2';
 import {
+  BackupProps,
   DatabaseCluster,
   DatabaseClusterEngine,
+  DatabaseSecret,
+  IParameterGroup,
   Login,
   ParameterGroup,
-  BackupProps,
-  IParameterGroup,
-  DatabaseSecret,
 } from '@aws-cdk/aws-rds';
+import { CfnOutput, Construct, Duration, RemovalPolicy } from '@aws-cdk/core';
 import { Environment } from './../pillar-stack';
 
 export interface DbClusterProps {

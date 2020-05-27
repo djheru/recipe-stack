@@ -1,8 +1,8 @@
-import { Construct } from '@aws-cdk/core';
-import { Artifact, IAction, IStage, Pipeline } from '@aws-cdk/aws-codepipeline';
-import { Role } from '@aws-cdk/aws-iam';
-import { CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 import { Repository } from '@aws-cdk/aws-codecommit';
+import { Artifact, IAction, IStage, Pipeline } from '@aws-cdk/aws-codepipeline';
+import { CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
+import { Role } from '@aws-cdk/aws-iam';
+import { Construct } from '@aws-cdk/core';
 import { Environment } from '../pillar-stack';
 
 export type GetPipelineActionsProps = {

@@ -1,10 +1,10 @@
-import { Bucket } from '@aws-cdk/aws-s3';
-import { Construct, RemovalPolicy } from '@aws-cdk/core';
-import { CloudFrontTarget } from '@aws-cdk/aws-route53-targets';
-import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
-import { CloudFrontWebDistribution, SSLMethod, SecurityPolicyProtocol } from '@aws-cdk/aws-cloudfront';
 import { DnsValidatedCertificate } from '@aws-cdk/aws-certificatemanager';
-import { HostedZone, ARecord, AddressRecordTarget, IHostedZone } from '@aws-cdk/aws-route53';
+import { CloudFrontWebDistribution, SecurityPolicyProtocol, SSLMethod } from '@aws-cdk/aws-cloudfront';
+import { AddressRecordTarget, ARecord, HostedZone, IHostedZone } from '@aws-cdk/aws-route53';
+import { CloudFrontTarget } from '@aws-cdk/aws-route53-targets';
+import { Bucket } from '@aws-cdk/aws-s3';
+import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
+import { Construct, RemovalPolicy } from '@aws-cdk/core';
 import { Environment } from '../pillar-stack';
 import { WebsitePipeline } from './websitePipeline';
 

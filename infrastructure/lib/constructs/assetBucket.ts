@@ -1,5 +1,5 @@
+import { BlockPublicAccess, Bucket, BucketEncryption, BucketProps } from '@aws-cdk/aws-s3';
 import { Construct, RemovalPolicy } from '@aws-cdk/core';
-import { Bucket, BucketProps, BucketEncryption, BlockPublicAccess } from '@aws-cdk/aws-s3';
 import { Environment } from './../pillar-stack';
 
 export interface AssetBucketProps extends BucketProps {
