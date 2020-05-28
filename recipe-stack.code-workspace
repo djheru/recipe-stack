@@ -1,7 +1,17 @@
 {
-	"folders": [
-		{
-			"path": "."
-		}
-	]
+  "folders": [
+    {
+      "name": "Root",
+      "path": "."
+    },
+
+    {
+      "name": "recipe-web",
+      "path": "websites/recipe-web"
+    },
+    {
+      "name": "users service",
+      "path": "services/users"
+    }
+  ]
 }
