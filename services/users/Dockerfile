@@ -10,6 +10,9 @@ RUN npm install --only=development
 
 COPY . .
 
+EXPOSE 9229
+EXPOSE 3030
+
 RUN npm run build
 
 # seperate build for production

@@ -1,16 +1,19 @@
 {
   "folders": [
     {
-      "name": "Root",
+      "name": "root",
       "path": "."
     },
-
+    {
+      "name": "infrastructure",
+      "path": "infrastructure"
+    },
     {
       "name": "recipe-web",
       "path": "websites/recipe-web"
     },
     {
-      "name": "users service",
+      "name": "users-service",
       "path": "services/users"
     }
   ]
