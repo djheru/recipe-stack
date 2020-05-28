@@ -4,7 +4,7 @@
     {
       "type": "node",
       "request": "attach",
-      "name": "Attach to Docker",
+      "name": "users-service debugger",
       "preLaunchTask": "tsc-watch",
       "protocol": "auto",
       "port": 9229,
