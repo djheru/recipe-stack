@@ -71,12 +71,13 @@ export class RecipeRepository extends Repository<Recipe> {
       }
 
       if (searchTerm) {
-        query.where(
-          'recipe.title ILIKE :searchTerm OR recipe.description ILIKE :searchTerm',
-          { searchTerm },
+        query.andWhere(
+          '(recipe.title ILIKE :searchTerm OR recipe.description ILIKE :searchTerm)',
+          { searchTerm: `%${searchTerm}%` },
         );
       }
 
+      query.orderBy({ 'recipe.title': 'ASC' });
       const recipes = await query.getMany();
       return recipes;
     } catch (e) {

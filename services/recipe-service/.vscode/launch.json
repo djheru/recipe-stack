@@ -4,14 +4,14 @@
     {
       "type": "node",
       "request": "attach",
-      "name": "Debug: task-management",
+      "name": "Debug: recipe-serice",
       "remoteRoot": "/usr/src/app",
-      "localRoot": "${workspaceFolder}/nestjs-task-management",
+      "localRoot": "${workspaceFolder}",
       "protocol": "inspector",
       "port": 9229,
       "restart": true,
       "address": "0.0.0.0",
-      "outFiles": ["${workspaceFolder}/nestjs-task-management/dist/**/*.js"],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
       "skipFiles": ["<node_internals>/**"],
       "sourceMaps": true
     }

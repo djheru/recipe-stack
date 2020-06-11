@@ -11,7 +11,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
+    "start:debug": "nest start --debug 0.0.0.0:9229 --watch",
     "start:prod": "node dist/main",
     "start:docker": "docker-compose -f ../docker-compose.yml up",
     "start:docker-debug": "docker-compose -f ../docker-compose.yml -f ../docker-compose.debug.yml up",
@@ -21,7 +21,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "dev": "npm run start:docker-fresh && npm run start:docker",
+    "debug": "npm run start:docker-fresh && npm run start:docker-debug"
   },
   "dependencies": {
     "@nestjs/common": "^7.0.0",
