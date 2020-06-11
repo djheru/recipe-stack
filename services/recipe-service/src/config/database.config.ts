@@ -1,17 +1,18 @@
-import { registerAs } from '@nestjs/config';
+import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
-console.log({ env: process.env.DB_SYNC });
 const {
-  DB_ENGINE: type = 'postgres',
-  DB_HOST: host = 'localhost',
-  PORT: port = 5432,
-  DB_USERNAME: username = 'postgres',
-  DB_PASSWORD: password = 'postgres',
-  DB_NAME: database = 'recipes',
-  DB_SYNC: synchronize = false,
+  RECIPES_DB_HOST: host = 'localhost',
+  RECIPES_DB_PORT = '5432',
+  RECIPES_DB_USERNAME: username = 'postgres',
+  RECIPES_DB_PASSWORD: password = 'postgres',
+  RECIPES_DB_NAME: database = 'recipes',
+  RECIPES_DB_SYNC: synchronize = 'false',
 } = process.env;
 
-export default registerAs('database', () => ({
+const port = parseInt(RECIPES_DB_PORT);
+const type = 'postgres';
+
+export const databaseConfig: TypeOrmModuleOptions = {
   host,
   port,
   username,
@@ -19,4 +20,5 @@ export default registerAs('database', () => ({
   database,
   type,
   synchronize: synchronize && synchronize !== 'false',
-}));
+  entities: [`${__dirname}/../**/*.entity.{ts,js}`],
+};

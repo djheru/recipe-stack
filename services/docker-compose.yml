@@ -1,39 +1,40 @@
 version: '3.7'
 
 services:
-  users:
-    container_name: users
+  recipe-service:
+    container_name: recipe-service
     build:
-      context: ./users
-      target: development
+      context: ./recipe-service
+      target: development # or test or production
     volumes:
-      - ./users:/usr/src/app
+      - ./recipe-service:/usr/src/app
       - /usr/src/app/node_modules
     ports:
-      - 3030:3030
-    command: npm run dev
+      - 3000:3000
+    command: npm run start:dev
     env_file:
-      - ./users/.env
+      - ./recipe-service/.env
     networks:
-      - webnet
+      - recipe-net
     depends_on:
-      - postgres
+      - recipe-service-pg
 
-  postgres:
-    container_name: postgres
+  recipe-service-pg:
+    container_name: recipe-service-pg
     image: postgres:10.7
     networks:
-      - webnet
+      - recipe-net
     environment:
-      POSTGRES_PASSWORD: ${USERS_DB_PASSWORD}
-      POSTGRES_USER: ${USERS_DB_USERNAME}
-      POSTGRES_DB: ${USERS_DB_DATABASE_NAME}
+      POSTGRES_PASSWORD: ${RECIPES_DB_PASSWORD}
+      POSTGRES_USER: ${RECIPES_DB_USERNAME}
+      POSTGRES_DB: ${RECIPES_DB_NAME}
       PG_DATA: /var/lib/postgresql/data
     ports:
       - 5432:5432
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - recipe-service-pgdata:/var/lib/postgresql/data
+
 networks:
-  webnet:
+  recipe-net:
 volumes:
-  pgdata:
+  recipe-service-pgdata:

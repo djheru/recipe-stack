@@ -13,6 +13,9 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "start:docker": "docker-compose -f ../docker-compose.yml up",
+    "start:docker-debug": "docker-compose -f ../docker-compose.yml -f ../docker-compose.debug.yml up",
+    "start:docker-fresh": "docker-compose down && docker-compose build --no-cache",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -25,9 +28,14 @@
     "@nestjs/config": "^0.5.0",
     "@nestjs/core": "^7.0.0",
     "@nestjs/platform-express": "^7.0.0",
+    "@nestjs/typeorm": "^7.1.0",
+    "class-transformer": "^0.2.3",
+    "class-validator": "^0.12.2",
+    "pg": "^8.2.1",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
-    "rxjs": "^6.5.4"
+    "rxjs": "^6.5.4",
+    "typeorm": "^0.2.25"
   },
   "devDependencies": {
     "@nestjs/cli": "^7.0.0",
