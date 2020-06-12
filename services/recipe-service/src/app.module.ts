@@ -4,7 +4,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseConfig } from './config/database.config';
 import { RecipesModule } from './recipes/recipes.module';
 
-console.log(databaseConfig);
 @Module({
   imports: [
     ConfigModule.forRoot({
