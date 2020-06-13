@@ -4,6 +4,7 @@ import { AssetBucket } from './constructs/assetBucket';
 import { BastionHostInstance } from './constructs/bastionHostInstance';
 import { DbClusterServerless } from './constructs/dbClusterServerless';
 import { PipelineManager } from './constructs/pipelineManager';
+import { Service } from './constructs/service';
 import { PillarVpc } from './constructs/vpc';
 import { Website } from './constructs/website';
 
@@ -80,6 +81,14 @@ export class PillarStack extends cdk.Stack {
       sourcePath: 'websites/recipe-web',
       hostedZoneDomainName: 'di-metal.net',
       certificateDomainName,
+    });
+
+    const serviceName = `${environmentName}-recipe-service`;
+    const service = new Service(this, serviceName, {
+      name: serviceName,
+      environmentName,
+      sourcePath: 'services/recipe-service',
+      vpc: pillarVpc.instance,
     });
 
     pipelineManager.registerConstructs([website]);

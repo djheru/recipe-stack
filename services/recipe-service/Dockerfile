@@ -19,7 +19,7 @@ ENV NODE_ENV=${NODE_ENV}
 WORKDIR /usr/src/app
 # Copy the installed and built files from the development stage
 COPY --from=development /usr/src/app ./
-RUN npm run test --passWithNoTests
+RUN npm run test -- --passWithNoTests
 
 # -----------------------------------------------------------------------
 

@@ -1,6 +1,42 @@
 const getS3VersionPath = (bucketName: string) => `${bucketName}/versions/${Date.now()}`;
 const s3GrantsUri = 'http://acs.amazonaws.com/groups/global/AllUsers';
 
+export const buildServiceBuildSpec = ({
+  name,
+  sourcePath,
+  imageName,
+}: {
+  name: string;
+  sourcePath: string;
+  imageName: string;
+}) => ({
+  version: '0.2',
+  phases: {
+    pre_build: {
+      commands: ['echo Logging in to AWS ECR', '$(aws ecr get-login --region us-west-2)'],
+    },
+    build: {
+      commands: [
+        'echo Build started on `date`',
+        'echo Building the Docker image...',
+        `cd ${sourcePath}`,
+        `docker build -t ${name} .`,
+        `docker tag ${name}:latest ${imageName}:latest`,
+      ],
+    },
+    post_build: {
+      commands: [
+        'echo Build completed on `date`',
+        'echo Pushing the Docker image...',
+        `docker push ${imageName}:latest`,
+        `printf '{"name": "${name}", "imageURI": "${imageName}:latest"}' > imagedefinitions.json`,
+      ],
+    },
+  },
+  artifacts: {
+    files: ['imageDetail.json'],
+  },
+});
 export const buildWebsiteBuildSpec = ({ name, sourcePath }: { name: string; sourcePath: string }) => ({
   version: '0.2',
   phases: {
