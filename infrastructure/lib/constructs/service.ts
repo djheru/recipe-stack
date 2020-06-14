@@ -1,4 +1,4 @@
-import { BuildSpec, PipelineProject } from '@aws-cdk/aws-codebuild';
+import { BuildSpec, LinuxBuildImage, PipelineProject } from '@aws-cdk/aws-codebuild';
 import { Artifact } from '@aws-cdk/aws-codepipeline';
 import { CodeBuildAction, EcsDeployAction } from '@aws-cdk/aws-codepipeline-actions';
 import { IVpc } from '@aws-cdk/aws-ec2';
@@ -110,6 +110,10 @@ export class Service extends Construct implements Pipelineable {
       projectName: buildProjectName,
       role,
       buildSpec: BuildSpec.fromObject(buildProjectBuildSpec),
+      environment: {
+        buildImage: LinuxBuildImage.fromCodeBuildImageId('aws/codebuild/amazonlinux2-x86_64-standard:3.0'),
+        privileged: true,
+      },
     });
     const buildActionName = `${this.name}-codebuild-build-action`;
     const buildAction = new CodeBuildAction({
