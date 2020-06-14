@@ -29,12 +29,13 @@ export const buildServiceBuildSpec = ({
         'echo Build completed on `date`',
         'echo Pushing the Docker image...',
         `docker push ${imageName}:latest`,
-        `printf '{"name": "${name}", "imageURI": "${imageName}:latest"}' > imagedefinitions.json`,
+        'pwd',
+        `printf '{"name": "${name}", "imageURI": "${imageName}:latest"}' > /imagedefinitions.json`,
       ],
     },
   },
   artifacts: {
-    files: ['imagedefinitions.json'],
+    files: ['/imagedefinitions.json'],
   },
 });
 export const buildWebsiteBuildSpec = ({ name, sourcePath }: { name: string; sourcePath: string }) => ({
