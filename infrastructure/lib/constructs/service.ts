@@ -3,8 +3,11 @@ import { Artifact } from '@aws-cdk/aws-codepipeline';
 import { CodeBuildAction, EcsDeployAction } from '@aws-cdk/aws-codepipeline-actions';
 import { IVpc } from '@aws-cdk/aws-ec2';
 import { Repository } from '@aws-cdk/aws-ecr';
-import { ContainerImage } from '@aws-cdk/aws-ecs';
-import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns';
+import { ContainerImage, Secret } from '@aws-cdk/aws-ecs';
+import {
+  ApplicationLoadBalancedFargateService,
+  ApplicationLoadBalancedFargateServiceProps,
+} from '@aws-cdk/aws-ecs-patterns';
 import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
 import { Construct, Duration } from '@aws-cdk/core';
 import { Environment } from '../pillar-stack';
@@ -15,6 +18,8 @@ export interface ServiceProps {
   name: string;
   environmentName: Environment;
   sourcePath: string;
+  secrets?: { [key: string]: Secret };
+  environment?: { [key: string]: any };
   vpc: IVpc;
 }
 
@@ -30,7 +35,7 @@ export class Service extends Construct implements Pipelineable {
   constructor(scope: Construct, id: string, props: ServiceProps) {
     super(scope, id);
 
-    const { name, environmentName, sourcePath, vpc } = props;
+    const { name, environmentName, environment, secrets, sourcePath, vpc } = props;
 
     this.name = name;
     this.environmentName = environmentName;
@@ -42,15 +47,25 @@ export class Service extends Construct implements Pipelineable {
     this.repository.addLifecycleRule({ tagPrefixList: ['prod'], maxImageCount: 999 });
     this.repository.addLifecycleRule({ maxImageAge: Duration.days(90) });
 
-    this.fargateService = new ApplicationLoadBalancedFargateService(this, this.name, {
+    const taskImageOptions: any = {
+      image: ContainerImage.fromEcrRepository(this.repository, 'latest'),
+      containerPort: 3000,
+    };
+    if (environment) {
+      taskImageOptions.environment = environment;
+    }
+    if (secrets) {
+      taskImageOptions.secrets = secrets;
+    }
+
+    const fargateParams: ApplicationLoadBalancedFargateServiceProps = {
       memoryLimitMiB: 1024,
       desiredCount: 1,
       cpu: 512,
-      taskImageOptions: {
-        image: ContainerImage.fromEcrRepository(this.repository, 'latest'),
-      },
+      taskImageOptions,
       vpc,
-    });
+    };
+    this.fargateService = new ApplicationLoadBalancedFargateService(this, this.name, fargateParams);
 
     const scalableTarget = this.fargateService.service.autoScaleTaskCount({
       minCapacity: 1,

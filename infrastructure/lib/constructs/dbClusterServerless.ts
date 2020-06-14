@@ -1,5 +1,6 @@
 import { IConnectable, Port, SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
-import { CfnDBCluster, CfnDBSubnetGroup, DatabaseSecret } from '@aws-cdk/aws-rds';
+import { CfnDBCluster, CfnDBSubnetGroup } from '@aws-cdk/aws-rds';
+import { Secret } from '@aws-cdk/aws-secretsmanager';
 import { CfnOutput, Construct, Tag } from '@aws-cdk/core';
 import { Environment } from './../pillar-stack';
 
@@ -24,9 +25,11 @@ export class DbClusterServerless extends Construct {
   public databaseName: string;
   public engine: string;
   public subnetGroup: CfnDBSubnetGroup;
-  public dbSecret: DatabaseSecret;
+  public dbUsername: string;
+  public dbPasswordSecret: Secret;
   public securityGroup: SecurityGroup;
-  public secretArn: string;
+  public usernameSecretArn: string;
+  public passwordSecretArn: string;
   public subnetIds: string[];
   public port: number;
   public minCapacity: number;
@@ -55,7 +58,7 @@ export class DbClusterServerless extends Construct {
 
     this.secondsUntilAutoPause = restProps.secondsUntilAutoPause || 600;
 
-    this.buildSecret();
+    this.buildCredentials();
     this.buildSubnetGroup();
     this.buildSecurityGroup();
     this.buildInstance();
@@ -65,16 +68,36 @@ export class DbClusterServerless extends Construct {
     Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
   }
 
-  private buildSecret() {
-    const secretName = `${this.clusterName}-secret`;
-    this.dbSecret = new DatabaseSecret(this, secretName, {
-      username: `${this.databaseName}_admin`,
-    });
-    this.secretArn = this.dbSecret.secretArn;
+  private buildCredentials() {
+    const usernameName = `${this.clusterName}-username`;
+    this.dbUsername = `${this.databaseName}_admin`;
+
     this.exportValue({
-      exportName: `${secretName}-arn`,
-      value: this.secretArn,
-      description: `DB Secret ARN for ${secretName}`,
+      exportName: `${usernameName}`,
+      value: this.dbUsername,
+      description: `DB Username Secret for ${usernameName}`,
+    });
+
+    const passwordSecretName = `${this.clusterName}-password-secret`;
+    this.dbPasswordSecret = new Secret(this, passwordSecretName, {
+      generateSecretString: {
+        excludePunctuation: true,
+        excludeCharacters: '/@" ',
+        passwordLength: 16,
+      },
+      secretName: passwordSecretName,
+    });
+    this.passwordSecretArn = this.dbPasswordSecret.secretArn;
+    this.exportValue({
+      exportName: `${passwordSecretName}-arn`,
+      value: this.passwordSecretArn,
+      description: `DB Password Secret ARN for ${passwordSecretName}`,
+    });
+
+    this.exportValue({
+      exportName: `${passwordSecretName}-val`,
+      value: this.dbPasswordSecret.secretValue.toString(),
+      description: `DB Password Secret value for ${passwordSecretName}`,
     });
   }
 
@@ -98,6 +121,7 @@ export class DbClusterServerless extends Construct {
   }
 
   private buildInstance() {
+    console.log('sekret', this.dbPasswordSecret.secretValue.toString());
     const params = {
       databaseName: this.databaseName,
       dbClusterIdentifier: this.clusterIdentifier,
@@ -105,8 +129,8 @@ export class DbClusterServerless extends Construct {
       enableHttpEndpoint: true,
       engine: this.engine,
       engineMode: 'serverless',
-      masterUsername: this.dbSecret.secretValueFromJson('username').toString(),
-      masterUserPassword: this.dbSecret.secretValueFromJson('password').toString(),
+      masterUsername: this.dbUsername,
+      masterUserPassword: this.dbPasswordSecret.secretValue.toString(),
       port: this.port,
       scalingConfiguration: {
         autoPause: true,
@@ -134,7 +158,11 @@ export class DbClusterServerless extends Construct {
 
   private allowConnections() {
     this.connections.forEach((connection) => {
-      this.securityGroup.connections.allowFrom(connection, Port.tcp(this.port));
+      this.allowConnection(connection);
     });
+  }
+
+  public allowConnection(connection: IConnectable) {
+    this.securityGroup.connections.allowFrom(connection, Port.tcp(this.port));
   }
 }

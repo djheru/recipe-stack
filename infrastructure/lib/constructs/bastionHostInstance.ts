@@ -30,7 +30,7 @@ export class BastionHostInstance extends Construct {
     ssh-keygen -t rsa -f ~/.ssh/cdk_key
 
     # Authorize the user
-    export INSTANCE_ID="i-00ae3d4064dbf46c7" && \
+    export INSTANCE_ID="i-066eb846c1a74401d" && \
     aws ec2-instance-connect send-ssh-public-key \
       --region us-west-2 \
       --instance-id $INSTANCE_ID \

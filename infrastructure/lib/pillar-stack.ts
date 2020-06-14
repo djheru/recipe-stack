@@ -1,4 +1,5 @@
 import { Repository } from '@aws-cdk/aws-codecommit';
+import { Secret } from '@aws-cdk/aws-ecs';
 import * as cdk from '@aws-cdk/core';
 import { AssetBucket } from './constructs/assetBucket';
 import { BastionHostInstance } from './constructs/bastionHostInstance';
@@ -15,8 +16,9 @@ type Stage = {
   pillarVpc?: PillarVpc;
   bastionHost?: BastionHostInstance;
   assetBucket?: AssetBucket;
-  usersDbCluster?: DbClusterServerless;
+  recipesDbCluster?: DbClusterServerless;
   website?: Website;
+  service?: Service;
   adminWebsite?: Website;
 };
 
@@ -63,9 +65,9 @@ export class PillarStack extends cdk.Stack {
       environmentName: environmentName,
     });
 
-    const usersDbClusterName = `${environmentName}-users-db`;
-    const usersDbCluster = new DbClusterServerless(this, usersDbClusterName, {
-      name: usersDbClusterName,
+    const recipesDbClusterName = `${environmentName}-recipes-db`;
+    const recipesDbCluster = new DbClusterServerless(this, recipesDbClusterName, {
+      name: recipesDbClusterName,
       environmentName: environmentName,
       vpc: pillarVpc.instance,
       subnetIds: pillarVpc.isolatedSubnetIds,
@@ -84,12 +86,29 @@ export class PillarStack extends cdk.Stack {
     });
 
     const serviceName = `${environmentName}-recipe-service`;
+    const serviceSecrets = {
+      RECIPES_DB_PASSWORD: Secret.fromSecretsManager(recipesDbCluster.dbPasswordSecret),
+    };
+    const serviceEnvironmentVariables = {
+      NAME: 'recipe-service',
+      ADDRESS: '0.0.0.0',
+      PORT: '3000',
+      RECIPES_DB_HOST: recipesDbCluster.instance.attrEndpointAddress,
+      RECIPES_DB_PORT: recipesDbCluster.instance.attrEndpointPort,
+      RECIPES_DB_USERNAME: recipesDbCluster.dbUsername,
+      RECIPES_DB_NAME: recipesDbCluster.instance.databaseName,
+      RECIPES_DB_SYNC: 'true',
+    };
     const service = new Service(this, serviceName, {
       name: serviceName,
       environmentName,
+      secrets: serviceSecrets,
+      environment: serviceEnvironmentVariables,
       sourcePath: 'services/recipe-service',
       vpc: pillarVpc.instance,
     });
+
+    recipesDbCluster.allowConnection(service.fargateService.service);
 
     pipelineManager.registerConstructs([website]);
 
@@ -98,8 +117,9 @@ export class PillarStack extends cdk.Stack {
       pillarVpc,
       bastionHost,
       assetBucket,
-      usersDbCluster,
+      recipesDbCluster,
       website,
+      service,
     };
 
     if (!this.stages) {
