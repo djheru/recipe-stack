@@ -110,7 +110,7 @@ export class PillarStack extends cdk.Stack {
 
     recipesDbCluster.allowConnection(service.fargateService.service);
 
-    pipelineManager.registerConstructs([website]);
+    pipelineManager.registerConstructs([website, service]);
 
     const stage: Stage = {
       pipelineManager,
