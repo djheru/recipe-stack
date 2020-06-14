@@ -13,7 +13,7 @@ export const buildServiceBuildSpec = ({
   version: '0.2',
   phases: {
     pre_build: {
-      commands: ['echo Logging in to AWS ECR', '$(aws ecr get-login --region us-west-2)'],
+      commands: ['echo Logging in to AWS ECR', '$(aws ecr get-login --no-include-email --region us-west-2)'],
     },
     build: {
       commands: [
