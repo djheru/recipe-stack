@@ -121,7 +121,6 @@ export class DbClusterServerless extends Construct {
   }
 
   private buildInstance() {
-    console.log('sekret', this.dbPasswordSecret.secretValue.toString());
     const params = {
       databaseName: this.databaseName,
       dbClusterIdentifier: this.clusterIdentifier,
