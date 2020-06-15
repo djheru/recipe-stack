@@ -29,7 +29,7 @@ export const buildServiceBuildSpec = ({
         'echo Build completed on `date`',
         'echo Pushing the Docker image...',
         `docker push ${imageName}:latest`,
-        'pwd',
+        'printenv',
         `printf '{"name": "${name}", "imageURI": "${imageName}:latest"}' > /imagedefinitions.json`,
       ],
     },

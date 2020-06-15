@@ -132,6 +132,7 @@ export class Service extends Construct implements Pipelineable {
       actionName: deployActionName,
       service: this.fargateService.service,
       input: inputArtifact,
+      runOrder: 3,
     });
     return [deployAction];
   }
