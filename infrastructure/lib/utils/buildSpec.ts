@@ -30,6 +30,7 @@ export const buildServiceBuildSpec = ({
         'echo Pushing the Docker image...',
         `docker push ${imageName}:latest`,
         'printenv',
+        `Saving new imagedefinitions.json as a build artifact`,
         `printf '[{"name": "${name}", "imageUri": "${imageName}:latest"}]' > imagedefinitions.json`,
         'cat imagedefinitions.json',
       ],
