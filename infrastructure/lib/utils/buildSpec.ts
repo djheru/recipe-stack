@@ -37,6 +37,7 @@ export const buildServiceBuildSpec = ({
   artifacts: {
     files: ['imagedefinitions.json'],
     'base-directory': sourcePath,
+    'discard-paths': true,
   },
 });
 export const buildWebsiteBuildSpec = ({ name, sourcePath }: { name: string; sourcePath: string }) => ({
