@@ -22,7 +22,7 @@ export const buildServiceBuildSpec = ({
         `cd ${sourcePath}`,
         'echo BUILD: $CODEBUILD_RESOLVED_SOURCE_VERSION',
         `docker build -t ${name} .`,
-        `docker tag ${name}:latest ${imageName}:latest`,
+        `docker tag ${name}:latest ${imageName}:$CODEBUILD_RESOLVED_SOURCE_VERSION`,
       ],
     },
     post_build: {
@@ -32,7 +32,7 @@ export const buildServiceBuildSpec = ({
         `docker push ${imageName}:latest`,
         'printenv',
         `echo "Saving new imagedefinitions.json as a build artifact"`,
-        `printf '[{"name": "${name}", "imageUri": "${imageName}:latest"}]' > imagedefinitions.json`,
+        `printf '[{"name": "${name}", "imageUri": "${imageName}:$CODEBUILD_RESOLVED_SOURCE_VERSION"}]' > imagedefinitions.json`,
         'cat imagedefinitions.json',
       ],
     },

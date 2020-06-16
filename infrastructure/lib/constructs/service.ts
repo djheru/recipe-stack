@@ -52,6 +52,7 @@ export class Service extends Construct implements Pipelineable {
 
     const taskImageOptions: any = {
       image: ContainerImage.fromEcrRepository(this.repository, 'latest'),
+      containerName: this.name,
       containerPort: 3000,
     };
     if (environment) {
