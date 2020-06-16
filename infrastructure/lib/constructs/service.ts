@@ -63,6 +63,7 @@ export class Service extends Construct implements Pipelineable {
     }
 
     const fargateParams: ApplicationLoadBalancedFargateServiceProps = {
+      serviceName: this.name,
       memoryLimitMiB: 1024,
       desiredCount: 1,
       cpu: 512,
