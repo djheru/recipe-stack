@@ -43,7 +43,9 @@ export class Service extends Construct implements Pipelineable {
     this.vpc = vpc;
 
     const repositoryName = `${this.name}-ecr-repository`;
-    this.repository = new Repository(this, repositoryName);
+    this.repository = new Repository(this, repositoryName, {
+      repositoryName,
+    });
     this.repository.addLifecycleRule({ tagPrefixList: ['prod'], maxImageCount: 999 });
     this.repository.addLifecycleRule({ maxImageAge: Duration.days(90) });
 
