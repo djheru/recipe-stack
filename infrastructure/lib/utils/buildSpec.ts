@@ -32,7 +32,7 @@ export const buildServiceBuildSpec = ({
         `docker push ${imageName}:$CODEBUILD_RESOLVED_SOURCE_VERSION`,
         'printenv',
         `echo "Saving new imagedefinitions.json as a build artifact"`,
-        `printf "[{\"name\": \"${name}\", \"imageUri\": \"${imageName}:%s\"}]" $CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json`,
+        `printf '[{"name": "${name}", "imageUri": "${imageName}:%s"}]' $CODEBUILD_RESOLVED_SOURCE_VERSION > imagedefinitions.json`,
         'cat imagedefinitions.json',
       ],
     },
