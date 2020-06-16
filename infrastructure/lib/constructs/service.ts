@@ -3,7 +3,7 @@ import { Artifact } from '@aws-cdk/aws-codepipeline';
 import { CodeBuildAction, EcsDeployAction } from '@aws-cdk/aws-codepipeline-actions';
 import { IVpc } from '@aws-cdk/aws-ec2';
 import { Repository } from '@aws-cdk/aws-ecr';
-import { ContainerImage, Secret } from '@aws-cdk/aws-ecs';
+import { Cluster, ContainerImage, Secret } from '@aws-cdk/aws-ecs';
 import {
   ApplicationLoadBalancedFargateService,
   ApplicationLoadBalancedFargateServiceProps,
@@ -31,6 +31,7 @@ export class Service extends Construct implements Pipelineable {
   public pipelineRole: Role;
   public repository: Repository;
   public fargateService: ApplicationLoadBalancedFargateService;
+  public static CLUSTER: Cluster;
 
   constructor(scope: Construct, id: string, props: ServiceProps) {
     super(scope, id);
@@ -44,7 +45,7 @@ export class Service extends Construct implements Pipelineable {
 
     const repositoryName = `${this.name}-ecr-repository`;
     this.repository = new Repository(this, repositoryName, {
-      repositoryName,
+      repositoryName: this.name,
     });
     this.repository.addLifecycleRule({ tagPrefixList: ['prod'], maxImageCount: 999 });
     this.repository.addLifecycleRule({ maxImageAge: Duration.days(90) });
@@ -64,10 +65,14 @@ export class Service extends Construct implements Pipelineable {
       memoryLimitMiB: 1024,
       desiredCount: 1,
       cpu: 512,
+      cluster: this.getCluster(),
       taskImageOptions,
-      vpc,
+      // vpc,
     };
     this.fargateService = new ApplicationLoadBalancedFargateService(this, this.name, fargateParams);
+    this.fargateService.targetGroup.configureHealthCheck({
+      path: '/recipes',
+    });
 
     const scalableTarget = this.fargateService.service.autoScaleTaskCount({
       minCapacity: 1,
@@ -137,5 +142,22 @@ export class Service extends Construct implements Pipelineable {
       runOrder: 3,
     });
     return [deployAction];
+  }
+
+  private getCluster() {
+    if (!Service.CLUSTER) {
+      const clusterName = `${this.name}-cluster`;
+      Service.CLUSTER = new Cluster(this, clusterName, {
+        clusterName,
+        vpc: this.vpc,
+        containerInsights: true,
+        defaultCloudMapNamespace: {
+          name: this.name,
+        },
+      });
+    } else {
+      console.log('using existing cluster');
+    }
+    return Service.CLUSTER;
   }
 }
