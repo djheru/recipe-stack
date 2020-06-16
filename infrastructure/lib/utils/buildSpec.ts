@@ -20,7 +20,7 @@ export const buildServiceBuildSpec = ({
         'echo Build started on `date`',
         'echo Building the Docker image...',
         `cd ${sourcePath}`,
-        'echo BUILD: $CODEBUILD_SOURCE_VERSION',
+        'echo BUILD: $CODEBUILD_RESOLVED_SOURCE_VERSION',
         `docker build -t ${name} .`,
         `docker tag ${name}:latest ${imageName}:latest`,
       ],
