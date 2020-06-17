@@ -1,5 +1,6 @@
 import { Repository } from '@aws-cdk/aws-codecommit';
 import { Secret } from '@aws-cdk/aws-ecs';
+import { HostedZone, IHostedZone } from '@aws-cdk/aws-route53';
 import * as cdk from '@aws-cdk/core';
 import { AssetBucket } from './constructs/assetBucket';
 import { BastionHostInstance } from './constructs/bastionHostInstance';
@@ -26,15 +27,27 @@ export class PillarStack extends cdk.Stack {
   public id: string;
   public stages: { [key in Environment]?: Stage };
   public gitRepository: Repository;
+  public hostedZoneDomainName: string;
+  public hostedZone: IHostedZone;
 
   constructor(scope: cdk.Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
 
     this.id = id;
+    this.hostedZoneDomainName = 'di-metal.net';
+
+    this.hostedZoneLookup();
 
     this.gitRepository = new Repository(this, `${id}-repository`, {
       repositoryName: id,
       description: `Git repository for ${id}`,
+    });
+  }
+
+  private hostedZoneLookup() {
+    this.hostedZone = HostedZone.fromLookup(this, this.node.tryGetContext('domain'), {
+      domainName: this.hostedZoneDomainName,
+      privateZone: false,
     });
   }
 
@@ -81,7 +94,7 @@ export class PillarStack extends cdk.Stack {
       name: websiteName,
       environmentName: environmentName,
       sourcePath: 'websites/recipe-web',
-      hostedZoneDomainName: 'di-metal.net',
+      hostedZone: this.hostedZone,
       certificateDomainName,
     });
 
@@ -101,9 +114,11 @@ export class PillarStack extends cdk.Stack {
     };
     const service = new Service(this, serviceName, {
       name: serviceName,
+      domainName: 'di-metal.net',
       environmentName,
       secrets: serviceSecrets,
       environment: serviceEnvironmentVariables,
+      hostedZone: this.hostedZone,
       sourcePath: 'services/recipe-service',
       vpc: pillarVpc.instance,
     });

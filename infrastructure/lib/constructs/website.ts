@@ -1,6 +1,6 @@
 import { DnsValidatedCertificate } from '@aws-cdk/aws-certificatemanager';
 import { CloudFrontWebDistribution, SecurityPolicyProtocol, SSLMethod } from '@aws-cdk/aws-cloudfront';
-import { AddressRecordTarget, ARecord, HostedZone, IHostedZone } from '@aws-cdk/aws-route53';
+import { AddressRecordTarget, ARecord, IHostedZone } from '@aws-cdk/aws-route53';
 import { CloudFrontTarget } from '@aws-cdk/aws-route53-targets';
 import { Bucket } from '@aws-cdk/aws-s3';
 import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
@@ -12,7 +12,7 @@ export interface WebsiteProps {
   name: string;
   environmentName: Environment;
   sourcePath: string;
-  hostedZoneDomainName: string;
+  hostedZone: IHostedZone;
   certificateDomainName: string;
 }
 
@@ -32,15 +32,14 @@ export class Website extends WebsitePipeline {
 
   constructor(scope: Construct, id: string, props: WebsiteProps) {
     super(scope, id, props);
-    const { name, environmentName, sourcePath, hostedZoneDomainName, certificateDomainName } = props;
+    const { name, environmentName, sourcePath, hostedZone, certificateDomainName } = props;
 
     this.name = name;
     this.environmentName = environmentName;
     this.sourcePath = sourcePath;
-    this.hostedZoneDomainName = hostedZoneDomainName;
+    this.hostedZone = hostedZone;
     this.certificateDomainName = certificateDomainName;
 
-    this.hostedZoneLookup();
     this.buildCertificate();
     this.buildBucket();
     this.buildCloudFrontDistribution();
@@ -56,13 +55,6 @@ export class Website extends WebsitePipeline {
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
     Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
-  }
-
-  private hostedZoneLookup() {
-    this.hostedZone = HostedZone.fromLookup(this, this.node.tryGetContext('domain'), {
-      domainName: this.hostedZoneDomainName,
-      privateZone: false,
-    });
   }
 
   private buildCertificate() {

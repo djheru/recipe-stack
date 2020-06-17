@@ -9,6 +9,7 @@ import {
   ApplicationLoadBalancedFargateServiceProps,
 } from '@aws-cdk/aws-ecs-patterns';
 import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
+import { IHostedZone } from '@aws-cdk/aws-route53';
 import { Construct, Duration } from '@aws-cdk/core';
 import { Environment } from '../pillar-stack';
 import { buildServiceBuildSpec } from '../utils/buildSpec';
@@ -21,6 +22,8 @@ export interface ServiceProps {
   secrets?: { [key: string]: Secret };
   environment?: { [key: string]: any };
   vpc: IVpc;
+  domainName?: string;
+  hostedZone: IHostedZone;
 }
 
 export class Service extends Construct implements Pipelineable {
@@ -31,17 +34,24 @@ export class Service extends Construct implements Pipelineable {
   public pipelineRole: Role;
   public repository: Repository;
   public fargateService: ApplicationLoadBalancedFargateService;
+  public domainName: string;
+  public hostedZone: IHostedZone;
   public static CLUSTER: Cluster;
 
   constructor(scope: Construct, id: string, props: ServiceProps) {
     super(scope, id);
 
-    const { name, environmentName, environment, secrets, sourcePath, vpc } = props;
+    const { name, domainName, environmentName, environment, hostedZone, secrets, sourcePath, vpc } = props;
 
     this.name = name;
     this.environmentName = environmentName;
     this.sourcePath = sourcePath;
     this.vpc = vpc;
+
+    if (domainName && hostedZone) {
+      this.domainName = `${this.name}.${domainName}`;
+      this.hostedZone = hostedZone;
+    }
 
     const repositoryName = `${this.name}-ecr-repository`;
     this.repository = new Repository(this, repositoryName, {
@@ -62,15 +72,21 @@ export class Service extends Construct implements Pipelineable {
       taskImageOptions.secrets = secrets;
     }
 
-    const fargateParams: ApplicationLoadBalancedFargateServiceProps = {
+    let fargateParams: ApplicationLoadBalancedFargateServiceProps = {
       serviceName: this.name,
       memoryLimitMiB: 1024,
       desiredCount: 1,
       cpu: 512,
       cluster: this.getCluster(),
       taskImageOptions,
-      // vpc,
     };
+
+    if (this.domainName && this.hostedZone) {
+      const domainName = this.domainName;
+      const domainZone = this.hostedZone;
+      fargateParams = { ...fargateParams, domainName, domainZone } as ApplicationLoadBalancedFargateServiceProps;
+    }
+
     this.fargateService = new ApplicationLoadBalancedFargateService(this, this.name, fargateParams);
     this.fargateService.targetGroup.configureHealthCheck({
       path: '/recipes',
