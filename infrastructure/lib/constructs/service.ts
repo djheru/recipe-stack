@@ -60,6 +60,7 @@ export class Service extends ServicePipeline {
 
     this.buildContainerRepository();
     this.buildFargateService();
+    this.configureServiceAutoscaling();
   }
 
   private buildContainerRepository() {
