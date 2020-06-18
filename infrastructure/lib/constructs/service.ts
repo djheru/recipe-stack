@@ -1,6 +1,3 @@
-import { BuildSpec, LinuxBuildImage, PipelineProject } from '@aws-cdk/aws-codebuild';
-import { Artifact } from '@aws-cdk/aws-codepipeline';
-import { CodeBuildAction, EcsDeployAction } from '@aws-cdk/aws-codepipeline-actions';
 import { IVpc } from '@aws-cdk/aws-ec2';
 import { Repository } from '@aws-cdk/aws-ecr';
 import { Cluster, ContainerImage, Secret } from '@aws-cdk/aws-ecs';
@@ -8,58 +5,73 @@ import {
   ApplicationLoadBalancedFargateService,
   ApplicationLoadBalancedFargateServiceProps,
 } from '@aws-cdk/aws-ecs-patterns';
-import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
+import { Role } from '@aws-cdk/aws-iam';
 import { IHostedZone } from '@aws-cdk/aws-route53';
 import { Construct, Duration } from '@aws-cdk/core';
-import { Environment } from '../pillar-stack';
-import { buildServiceBuildSpec } from '../utils/buildSpec';
-import { GetPipelineActionsProps, Pipelineable } from './pipelineManager';
+import { ServicePipeline, ServicePipelineProps } from './servicePipeline';
 
-export interface ServiceProps {
-  name: string;
-  environmentName: Environment;
-  sourcePath: string;
-  secrets?: { [key: string]: Secret };
-  environment?: { [key: string]: any };
-  vpc: IVpc;
+type EnvironmentMap = { [key: string]: any };
+type SecretsMap = { [key: string]: Secret };
+export interface ServiceProps extends ServicePipelineProps {
+  routePath: string;
   domainName?: string;
+  environment?: EnvironmentMap;
   hostedZone: IHostedZone;
+  secrets?: SecretsMap;
+  vpc: IVpc;
+  cluster?: Cluster;
 }
 
-export class Service extends Construct implements Pipelineable {
-  public name: string;
-  public environmentName: Environment;
-  public sourcePath: string;
+export class Service extends ServicePipeline {
+  public routePath: string;
   public vpc: IVpc;
   public pipelineRole: Role;
   public repository: Repository;
   public fargateService: ApplicationLoadBalancedFargateService;
   public domainName: string;
   public hostedZone: IHostedZone;
-  public static CLUSTER: Cluster;
+  public environment?: EnvironmentMap;
+  public secrets?: SecretsMap;
+  public static CLUSTER: Cluster | undefined;
 
   constructor(scope: Construct, id: string, props: ServiceProps) {
-    super(scope, id);
+    const {
+      name,
+      cluster,
+      domainName,
+      environmentName,
+      environment,
+      hostedZone,
+      secrets,
+      sourcePath,
+      vpc,
+      routePath,
+    } = props;
 
-    const { name, domainName, environmentName, environment, hostedZone, secrets, sourcePath, vpc } = props;
+    super(scope, id, { name, environmentName, sourcePath });
 
-    this.name = name;
-    this.environmentName = environmentName;
-    this.sourcePath = sourcePath;
+    this.environment = environment;
+    this.secrets = secrets;
     this.vpc = vpc;
+    this.domainName = `${this.name}.${domainName}`;
+    this.hostedZone = hostedZone;
+    this.routePath = routePath;
+    Service.CLUSTER = cluster;
 
-    if (domainName && hostedZone) {
-      this.domainName = `${this.name}.${domainName}`;
-      this.hostedZone = hostedZone;
-    }
+    this.buildContainerRepository();
+    this.buildFargateService();
+  }
 
+  private buildContainerRepository() {
     const repositoryName = `${this.name}-ecr-repository`;
     this.repository = new Repository(this, repositoryName, {
       repositoryName: this.name,
     });
     this.repository.addLifecycleRule({ tagPrefixList: ['prod'], maxImageCount: 999 });
     this.repository.addLifecycleRule({ maxImageAge: Duration.days(90) });
+  }
 
+  private buildTaskImageOptions(environment?: EnvironmentMap, secrets?: SecretsMap) {
     const taskImageOptions: any = {
       image: ContainerImage.fromEcrRepository(this.repository, 'latest'),
       containerName: this.name,
@@ -71,6 +83,11 @@ export class Service extends Construct implements Pipelineable {
     if (secrets) {
       taskImageOptions.secrets = secrets;
     }
+    return taskImageOptions;
+  }
+
+  private buildServiceParams(): ApplicationLoadBalancedFargateServiceProps {
+    const taskImageOptions = this.buildTaskImageOptions(this.environment, this.secrets);
 
     let fargateParams: ApplicationLoadBalancedFargateServiceProps = {
       serviceName: this.name,
@@ -86,80 +103,35 @@ export class Service extends Construct implements Pipelineable {
       const domainZone = this.hostedZone;
       fargateParams = { ...fargateParams, domainName, domainZone } as ApplicationLoadBalancedFargateServiceProps;
     }
+    return fargateParams;
+  }
 
+  private buildFargateService() {
+    const fargateParams = this.buildServiceParams();
     this.fargateService = new ApplicationLoadBalancedFargateService(this, this.name, fargateParams);
     this.fargateService.targetGroup.configureHealthCheck({
-      path: '/recipes',
+      path: this.routePath,
     });
+  }
 
+  private configureServiceAutoscaling(
+    minCapacity = 1,
+    maxCapacity = 4,
+    cpuTargetUtilizationPercent: number = 50,
+    ramTargetUtilizationPercent: number = 50,
+  ) {
     const scalableTarget = this.fargateService.service.autoScaleTaskCount({
-      minCapacity: 1,
-      maxCapacity: 4,
+      minCapacity,
+      maxCapacity,
     });
 
     scalableTarget.scaleOnCpuUtilization('CpuScaling', {
-      targetUtilizationPercent: 50,
+      targetUtilizationPercent: cpuTargetUtilizationPercent,
     });
 
     scalableTarget.scaleOnMemoryUtilization('MemoryScaling', {
-      targetUtilizationPercent: 50,
+      targetUtilizationPercent: ramTargetUtilizationPercent,
     });
-  }
-
-  protected getPipelineRole() {
-    if (this.pipelineRole) {
-      return this.pipelineRole;
-    }
-    const roleName = `${this.name}-code-build-role`;
-    this.pipelineRole = new Role(this, roleName, {
-      roleName,
-      assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
-      managedPolicies: [
-        ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
-        ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryPowerUser'),
-        ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLogsFullAccess'),
-      ],
-    });
-    return this.pipelineRole;
-  }
-
-  public getBuildActions({ inputArtifact, outputArtifact }: GetPipelineActionsProps) {
-    const role = this.getPipelineRole();
-    const buildProjectName = `${this.name}-build-project`;
-    const buildProjectBuildSpec = buildServiceBuildSpec({
-      name: this.name,
-      sourcePath: this.sourcePath,
-      imageName: this.repository.repositoryUri,
-    });
-    const buildProject = new PipelineProject(this, buildProjectName, {
-      projectName: buildProjectName,
-      role,
-      buildSpec: BuildSpec.fromObject(buildProjectBuildSpec),
-      environment: {
-        buildImage: LinuxBuildImage.fromCodeBuildImageId('aws/codebuild/amazonlinux2-x86_64-standard:3.0'),
-        privileged: true,
-      },
-    });
-    const buildActionName = `${this.name}-codebuild-build-action`;
-    const buildAction = new CodeBuildAction({
-      actionName: buildActionName,
-      project: buildProject,
-      input: inputArtifact,
-      outputs: [outputArtifact as Artifact],
-      runOrder: 2,
-    });
-    return [buildAction];
-  }
-
-  public getDeployActions({ inputArtifact }: GetPipelineActionsProps) {
-    const deployActionName = `${this.name}-deploy-action`;
-    const deployAction = new EcsDeployAction({
-      actionName: deployActionName,
-      service: this.fargateService.service,
-      input: inputArtifact,
-      runOrder: 3,
-    });
-    return [deployAction];
   }
 
   private getCluster() {

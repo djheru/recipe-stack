@@ -120,6 +120,7 @@ export class PillarStack extends cdk.Stack {
       environment: serviceEnvironmentVariables,
       hostedZone: this.hostedZone,
       sourcePath: 'services/recipe-service',
+      routePath: '/recipes',
       vpc: pillarVpc.instance,
     });
 
