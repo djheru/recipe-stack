@@ -5,9 +5,9 @@ import { CodeBuildAction } from '@aws-cdk/aws-codepipeline-actions';
 import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
 import { CfnOutput, Construct, Tag } from '@aws-cdk/core';
 import { existsSync } from 'fs';
-import { Environment } from '../pillar-stack';
-import { buildWebsiteBuildSpec, deployWebsiteBuildSpec } from '../utils/buildSpec.js';
-import { GetPipelineActionsProps, Pipelineable } from './pipelineManager';
+import { Environment } from '../../pillar-stack';
+import { buildWebsiteBuildSpec, deployWebsiteBuildSpec } from '../../utils/buildSpec.js';
+import { GetPipelineActionsProps, Pipelineable } from '../pipelineManager/pipelineManager';
 
 export interface WebsitePipelineProps {
   name: string;

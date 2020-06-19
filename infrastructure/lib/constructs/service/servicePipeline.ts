@@ -5,9 +5,9 @@ import { Repository } from '@aws-cdk/aws-ecr';
 import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns';
 import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
 import { Construct } from '@aws-cdk/core';
-import { Environment } from '../pillar-stack';
-import { buildServiceBuildSpec } from '../utils/buildSpec';
-import { GetPipelineActionsProps, Pipelineable } from './pipelineManager';
+import { Environment } from '../../pillar-stack';
+import { buildServiceBuildSpec } from '../../utils/buildSpec';
+import { GetPipelineActionsProps, Pipelineable } from '../pipelineManager/pipelineManager';
 
 export interface ServicePipelineProps {
   name: string;

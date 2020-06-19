@@ -8,7 +8,7 @@ import {
   SubnetType,
 } from '@aws-cdk/aws-ec2';
 import { Construct, Tag } from '@aws-cdk/core';
-import { Environment } from '../pillar-stack';
+import { Environment } from '../../pillar-stack';
 
 export interface BastionHostInstanceConstructProps extends BastionHostLinuxProps {
   name: string;

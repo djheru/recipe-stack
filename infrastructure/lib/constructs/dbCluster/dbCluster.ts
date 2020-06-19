@@ -18,7 +18,7 @@ import {
   ParameterGroup,
 } from '@aws-cdk/aws-rds';
 import { CfnOutput, Construct, Duration, RemovalPolicy, Tag } from '@aws-cdk/core';
-import { Environment } from './../pillar-stack';
+import { Environment } from '../../pillar-stack';
 
 export interface DbClusterProps {
   name: string;

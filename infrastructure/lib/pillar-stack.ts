@@ -2,13 +2,13 @@ import { Repository } from '@aws-cdk/aws-codecommit';
 import { Secret } from '@aws-cdk/aws-ecs';
 import { HostedZone, IHostedZone } from '@aws-cdk/aws-route53';
 import * as cdk from '@aws-cdk/core';
-import { AssetBucket } from './constructs/assetBucket';
-import { BastionHostInstance } from './constructs/bastionHostInstance';
-import { DbClusterServerless } from './constructs/dbClusterServerless';
-import { PipelineManager } from './constructs/pipelineManager';
-import { Service } from './constructs/service';
-import { PillarVpc } from './constructs/vpc';
-import { Website } from './constructs/website';
+import { AssetBucket } from './constructs/assetBucket/assetBucket';
+import { BastionHostInstance } from './constructs/bastionHost/bastionHostInstance';
+import { DbClusterServerless } from './constructs/dbCluster/dbClusterServerless';
+import { PipelineManager } from './constructs/pipelineManager/pipelineManager';
+import { Service } from './constructs/service/service';
+import { PillarVpc } from './constructs/vpc/vpc';
+import { Website } from './constructs/website/website';
 
 export type Environment = 'demo' | 'dev' | 'prod' | 'prototype';
 

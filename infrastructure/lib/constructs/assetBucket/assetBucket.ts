@@ -1,6 +1,6 @@
 import { BlockPublicAccess, Bucket, BucketEncryption, BucketProps } from '@aws-cdk/aws-s3';
 import { Construct, RemovalPolicy, Tag } from '@aws-cdk/core';
-import { Environment } from './../pillar-stack';
+import { Environment } from '../../pillar-stack';
 
 export interface AssetBucketProps extends BucketProps {
   name: string;
