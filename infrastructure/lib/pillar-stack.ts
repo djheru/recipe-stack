@@ -1,16 +1,18 @@
 import { Repository } from '@aws-cdk/aws-codecommit';
 import { Secret } from '@aws-cdk/aws-ecs';
 import { HostedZone, IHostedZone } from '@aws-cdk/aws-route53';
-import * as cdk from '@aws-cdk/core';
-import { AssetBucket } from './constructs/assetBucket/assetBucket';
-import { BastionHostInstance } from './constructs/bastionHost/bastionHostInstance';
-import { DbClusterServerless } from './constructs/dbCluster/dbClusterServerless';
-import { PipelineManager } from './constructs/pipelineManager/pipelineManager';
-import { Service } from './constructs/service/service';
-import { PillarVpc } from './constructs/vpc/vpc';
-import { Website } from './constructs/website/website';
-
-export type Environment = 'demo' | 'dev' | 'prod' | 'prototype';
+import { Construct, Stack, StackProps } from '@aws-cdk/core';
+import {
+  AssetBucket,
+  BastionHostInstance,
+  DbClusterServerless,
+  Environment,
+  PillarVpc,
+  PipelineManager,
+  Service,
+  Website,
+} from './constructs';
+import { Pipelineable } from './constructs/pipelineManager';
 
 type Stage = {
   pipelineManager?: PipelineManager;
@@ -18,30 +20,65 @@ type Stage = {
   bastionHost?: BastionHostInstance;
   assetBucket?: AssetBucket;
   recipesDbCluster?: DbClusterServerless;
-  website?: Website;
-  service?: Service;
-  adminWebsite?: Website;
+  recipeWebsite?: Website;
+  recipeService?: Service;
 };
 
-export class PillarStack extends cdk.Stack {
+export class PillarStack extends Stack {
   public id: string;
   public stages: { [key in Environment]?: Stage };
+  public environmentName: Environment;
+
   public gitRepository: Repository;
   public hostedZoneDomainName: string;
   public hostedZone: IHostedZone;
 
-  constructor(scope: cdk.Construct, id: string, props: cdk.StackProps) {
+  public pipelineManager: PipelineManager;
+  public pillarVpc: PillarVpc;
+  public bastionHost: BastionHostInstance;
+  public assetBucket: AssetBucket;
+  public recipesDbCluster: DbClusterServerless;
+  public recipeWebsite: Website;
+  public recipeService: Service;
+
+  constructor(scope: Construct, id: string, props: StackProps) {
     super(scope, id, props);
 
     this.id = id;
     this.hostedZoneDomainName = 'di-metal.net';
 
     this.hostedZoneLookup();
+    this.buildGitRepo(id);
+  }
 
-    this.gitRepository = new Repository(this, `${id}-repository`, {
-      repositoryName: id,
-      description: `Git repository for ${id}`,
-    });
+  public buildStage(environmentName: Environment) {
+    this.environmentName = environmentName;
+
+    this.buildPipelineManager();
+    this.buildVpcs();
+    this.buildBastionHosts();
+    this.buildAssetBuckets();
+    this.buildDbClusters();
+    this.buildWebsites();
+    this.buildServices();
+
+    const stage: Stage = {
+      pipelineManager: this.pipelineManager,
+      pillarVpc: this.pillarVpc,
+      bastionHost: this.bastionHost,
+      assetBucket: this.assetBucket,
+      recipesDbCluster: this.recipesDbCluster,
+      recipeWebsite: this.recipeWebsite,
+      recipeService: this.recipeService,
+    };
+
+    if (!this.stages) {
+      this.stages = { [this.environmentName]: stage };
+    } else {
+      this.stages[this.environmentName] = stage;
+    }
+
+    this.registerPipelineConstructs();
   }
 
   private hostedZoneLookup() {
@@ -51,97 +88,116 @@ export class PillarStack extends cdk.Stack {
     });
   }
 
-  public buildStage(environmentName: Environment) {
-    const pipelineManagerName = `${environmentName}-pipeline-manager`;
+  private buildGitRepo(id: string) {
+    this.gitRepository = new Repository(this, `${id}-repository`, {
+      repositoryName: id,
+      description: `Git repository for ${id}`,
+    });
+  }
+
+  private buildPipelineManager() {
+    const pipelineManagerName = `${this.environmentName}-pipeline-manager`;
     const pipelineManager = new PipelineManager(this, pipelineManagerName, {
       name: pipelineManagerName,
-      environmentName,
+      environmentName: this.environmentName,
       gitRepository: this.gitRepository,
     });
+    this.pipelineManager = pipelineManager;
+  }
 
-    const vpcName = `${environmentName}-vpc`;
+  private buildVpcs() {
+    const vpcName = `${this.environmentName}-vpc`;
     const pillarVpc = new PillarVpc(this, vpcName, {
       name: vpcName,
-      environmentName: environmentName,
+      environmentName: this.environmentName,
     });
+    this.pillarVpc = pillarVpc;
+  }
 
-    const bastionHostName = `${environmentName}-bastion-host`;
+  private buildBastionHosts() {
+    const bastionHostName = `${this.environmentName}-bastion-host`;
     const bastionHost = new BastionHostInstance(this, bastionHostName, {
       name: bastionHostName,
-      environmentName: environmentName,
-      vpc: pillarVpc.instance,
+      environmentName: this.environmentName,
+      vpc: this.pillarVpc.instance,
     });
+    this.bastionHost = bastionHost;
+  }
 
-    const assetBucketName = `${environmentName}-${this.id}-assets`;
+  private buildAssetBuckets() {
+    const assetBucketName = `${this.environmentName}-${this.id}-assets`;
     const assetBucket = new AssetBucket(this, assetBucketName, {
       name: assetBucketName,
-      environmentName: environmentName,
+      environmentName: this.environmentName,
     });
+    this.assetBucket = assetBucket;
+  }
 
-    const recipesDbClusterName = `${environmentName}-recipes-db`;
+  private buildDbClusters() {
+    const recipesDbClusterName = `${this.environmentName}-recipes-db`;
     const recipesDbCluster = new DbClusterServerless(this, recipesDbClusterName, {
       name: recipesDbClusterName,
-      environmentName: environmentName,
-      vpc: pillarVpc.instance,
-      subnetIds: pillarVpc.isolatedSubnetIds,
-      allowedConnections: [bastionHost.instance],
+      environmentName: this.environmentName,
+      vpc: this.pillarVpc.instance,
+      subnetIds: this.pillarVpc.isolatedSubnetIds,
+      allowedConnections: [this.bastionHost.instance],
     });
+    this.recipesDbCluster = recipesDbCluster;
+  }
 
+  private buildWebsites() {
     const certificateDomainName =
-      environmentName === 'prod' ? 'web.di-metal.net' : `${environmentName}.web.di-metal.net`;
-    const websiteName = `${environmentName}-recipe-website`;
-    const website = new Website(this, websiteName, {
+      this.environmentName === 'prod' ? 'web.di-metal.net' : `${this.environmentName}.web.di-metal.net`;
+    const websiteName = `${this.environmentName}-recipe-website`;
+    const recipeWebsite = new Website(this, websiteName, {
       name: websiteName,
-      environmentName: environmentName,
+      environmentName: this.environmentName,
       sourcePath: 'websites/recipe-web',
       hostedZone: this.hostedZone,
       certificateDomainName,
     });
+    this.recipeWebsite = recipeWebsite;
+  }
 
-    const serviceName = `${environmentName}-recipe-service`;
+  private buildServices() {
+    const serviceName = `${this.environmentName}-recipe-service`;
     const serviceSecrets = {
-      RECIPES_DB_PASSWORD: Secret.fromSecretsManager(recipesDbCluster.dbPasswordSecret),
+      RECIPES_DB_PASSWORD: Secret.fromSecretsManager(this.recipesDbCluster.dbPasswordSecret),
     };
     const serviceEnvironmentVariables = {
       NAME: 'recipe-service',
       ADDRESS: '0.0.0.0',
       PORT: '3000',
-      RECIPES_DB_HOST: recipesDbCluster.instance.attrEndpointAddress,
-      RECIPES_DB_PORT: recipesDbCluster.instance.attrEndpointPort,
-      RECIPES_DB_USERNAME: recipesDbCluster.dbUsername,
-      RECIPES_DB_NAME: recipesDbCluster.instance.databaseName,
+      RECIPES_DB_HOST: this.recipesDbCluster.instance.attrEndpointAddress,
+      RECIPES_DB_PORT: this.recipesDbCluster.instance.attrEndpointPort,
+      RECIPES_DB_USERNAME: this.recipesDbCluster.dbUsername,
+      RECIPES_DB_NAME: this.recipesDbCluster.instance.databaseName,
       RECIPES_DB_SYNC: 'true',
     };
-    const service = new Service(this, serviceName, {
+    const recipeService = new Service(this, serviceName, {
       name: serviceName,
       domainName: 'di-metal.net',
-      environmentName,
+      environmentName: this.environmentName,
       secrets: serviceSecrets,
       environment: serviceEnvironmentVariables,
       hostedZone: this.hostedZone,
       sourcePath: 'services/recipe-service',
       routePath: '/recipes',
-      vpc: pillarVpc.instance,
+      vpc: this.pillarVpc.instance,
     });
+    this.recipeService = recipeService;
+    this.recipesDbCluster.allowConnection(recipeService.fargateService.service);
+  }
 
-    recipesDbCluster.allowConnection(service.fargateService.service);
-
-    pipelineManager.registerConstructs([website, service]);
-
-    const stage: Stage = {
-      pipelineManager,
-      pillarVpc,
-      bastionHost,
-      assetBucket,
-      recipesDbCluster,
-      website,
-      service,
-    };
-
-    if (!this.stages) {
-      this.stages = { [environmentName]: stage };
-    } else {
-      this.stages[environmentName] = stage;
+  private registerPipelineConstructs(): void {
+    const stackConstructs = Object.values(<Stage>this.stages[this.environmentName]);
+    // typeguard function
+    function isPipelineable(construct: Construct) {
+      return construct && 'pipelineable' in construct;
     }
+    const registeredConstructs: Pipelineable[] = <Pipelineable[]>(
+      stackConstructs.filter((construct: any) => isPipelineable(construct))
+    );
+    this.pipelineManager.registerConstructs(registeredConstructs);
   }
 }

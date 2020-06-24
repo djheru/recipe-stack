@@ -1,8 +1,8 @@
 import { GatewayVpcEndpointAwsService, SubnetType, Vpc, VpcProps } from '@aws-cdk/aws-ec2';
 import { CfnOutput, Construct, Tag } from '@aws-cdk/core';
-import { Environment } from '../../pillar-stack';
+import { Environment } from '../';
 
-export interface VpcConstructProps extends VpcProps {
+export interface PillarVpcProps extends VpcProps {
   name: string;
   environmentName: Environment;
 }
@@ -21,7 +21,7 @@ export class PillarVpc extends Construct {
   public isolatedSubnetIds: string[];
   public publicSubnetIds: string[];
   public privateSubnetIds: string[];
-  constructor(scope: Construct, id: string, props: VpcConstructProps) {
+  constructor(scope: Construct, id: string, props: PillarVpcProps) {
     super(scope, id);
 
     const { name, environmentName, ...restProps } = props;

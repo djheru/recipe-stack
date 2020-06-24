@@ -5,7 +5,7 @@ import { CloudFrontTarget } from '@aws-cdk/aws-route53-targets';
 import { Bucket } from '@aws-cdk/aws-s3';
 import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
 import { Construct, RemovalPolicy, Tag } from '@aws-cdk/core';
-import { Environment } from '../../pillar-stack';
+import { Environment } from '../';
 import { WebsitePipeline } from './websitePipeline';
 
 export interface WebsiteProps {

@@ -5,9 +5,9 @@ import { Repository } from '@aws-cdk/aws-ecr';
 import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns';
 import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
 import { Construct } from '@aws-cdk/core';
-import { Environment } from '../../pillar-stack';
+import { Environment } from '../';
 import { buildServiceBuildSpec } from '../../utils/buildSpec';
-import { GetPipelineActionsProps, Pipelineable } from '../pipelineManager/pipelineManager';
+import { GetPipelineActionsProps, Pipelineable } from '../pipelineManager';
 
 export interface ServicePipelineProps {
   name: string;
@@ -22,6 +22,7 @@ export class ServicePipeline extends Construct implements Pipelineable {
   public pipelineRole: Role;
   public repository: Repository;
   public fargateService: ApplicationLoadBalancedFargateService;
+  public readonly pipelineable: boolean = true;
 
   constructor(scope: Construct, id: string, props: ServicePipelineProps) {
     super(scope, id);

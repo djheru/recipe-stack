@@ -3,11 +3,11 @@ import { BuildSpec, PipelineProject } from '@aws-cdk/aws-codebuild';
 import { Artifact } from '@aws-cdk/aws-codepipeline';
 import { CodeBuildAction } from '@aws-cdk/aws-codepipeline-actions';
 import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
-import { CfnOutput, Construct, Tag } from '@aws-cdk/core';
+import { CfnOutput, Construct } from '@aws-cdk/core';
 import { existsSync } from 'fs';
-import { Environment } from '../../pillar-stack';
+import { Environment } from '../';
 import { buildWebsiteBuildSpec, deployWebsiteBuildSpec } from '../../utils/buildSpec.js';
-import { GetPipelineActionsProps, Pipelineable } from '../pipelineManager/pipelineManager';
+import { GetPipelineActionsProps, Pipelineable } from '../pipelineManager';
 
 export interface WebsitePipelineProps {
   name: string;
@@ -22,6 +22,7 @@ export class WebsitePipeline extends Construct implements Pipelineable {
   public bucketName: string;
   public distribution: CloudFrontWebDistribution;
   public pipelineRole: Role;
+  public readonly pipelineable: boolean = true;
 
   constructor(scope: Construct, id: string, props: WebsitePipelineProps) {
     super(scope, id);
@@ -30,10 +31,6 @@ export class WebsitePipeline extends Construct implements Pipelineable {
     this.name = name;
     this.environmentName = environmentName;
     this.sourcePath = sourcePath;
-
-    Tag.add(this, 'name', name);
-    Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
   }
 
   protected getPipelineRole() {

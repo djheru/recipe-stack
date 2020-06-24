@@ -8,16 +8,16 @@ import {
   SubnetType,
 } from '@aws-cdk/aws-ec2';
 import { Construct, Tag } from '@aws-cdk/core';
-import { Environment } from '../../pillar-stack';
+import { Environment } from '../';
 
-export interface BastionHostInstanceConstructProps extends BastionHostLinuxProps {
+export interface BastionHostInstanceProps extends BastionHostLinuxProps {
   name: string;
   environmentName: Environment;
 }
 
 export class BastionHostInstance extends Construct {
   public instance: BastionHostLinux;
-  constructor(scope: Construct, id: string, props: BastionHostInstanceConstructProps) {
+  constructor(scope: Construct, id: string, props: BastionHostInstanceProps) {
     super(scope, id);
 
     // Connection instructions: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.
@@ -41,11 +41,6 @@ export class BastionHostInstance extends Construct {
     # Connect via SSH (within 60 seconds)
     export INSTANCE_HOST="ec2-35-166-38-215.us-west-2.compute.amazonaws.com" && \
     ssh -i ~/.ssh/cdk_key ec2-user@$INSTANCE_HOST
-
-    ssh -oStrictHostKeyChecking=no \
-      -i ~/.ssh/cdk_key -N \
-      -L 5432:pillar-dbcluster-dev-db-cluster.cluster-cjab4zf5abb0.us-west-2.rds.amazonaws.com:5432 \
-      ec2-user@$INSTANCE_HOST
     
     # If you don't connect within 60 sec, you get: "Permission denied (publickey,gssapi-keyex,gssapi-with-mic)."
     */
