@@ -2,7 +2,7 @@ import { BuildSpec, LinuxBuildImage, PipelineProject } from '@aws-cdk/aws-codebu
 import { Repository } from '@aws-cdk/aws-codecommit';
 import { Artifact, IAction, IStage, Pipeline } from '@aws-cdk/aws-codepipeline';
 import { CodeBuildAction, CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
-import { Role } from '@aws-cdk/aws-iam';
+import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
 import { Construct, Tag } from '@aws-cdk/core';
 import { Environment } from '..';
 import { buildPrebuildBuildSpec } from '../../utils/buildspec';
@@ -83,8 +83,15 @@ export class PipelineManager extends Construct {
       name: this.name,
       sourcePath: 'infrastructure',
     });
+    const prebuildRoleName = `${this.name}-prebuild-code-build-role`;
+    const prebuildPipelineRole = new Role(this, prebuildRoleName, {
+      roleName: prebuildRoleName,
+      assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
+      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AWSCloudFormationFullAccess')],
+    });
     const prebuildBuildProject = new PipelineProject(this, prebuildProjectName, {
       projectName: prebuildProjectName,
+      role: prebuildPipelineRole,
       buildSpec: BuildSpec.fromObject(prebuildProjectBuildSpec),
       environment: {
         buildImage: LinuxBuildImage.fromCodeBuildImageId('aws/codebuild/amazonlinux2-x86_64-standard:3.0'),
