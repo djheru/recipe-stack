@@ -84,14 +84,14 @@ export class PipelineManager extends Construct {
       sourcePath: 'infrastructure',
     });
     const prebuildRoleName = `${this.name}-prebuild-code-build-role`;
-    const prebuildPipelineRole = new Role(this, prebuildRoleName, {
+    this.role = new Role(this, prebuildRoleName, {
       roleName: prebuildRoleName,
       assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
       managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AWSCloudFormationFullAccess')],
     });
     const prebuildBuildProject = new PipelineProject(this, prebuildProjectName, {
       projectName: prebuildProjectName,
-      role: prebuildPipelineRole,
+      role: this.role,
       buildSpec: BuildSpec.fromObject(prebuildProjectBuildSpec),
       environment: {
         buildImage: LinuxBuildImage.fromCodeBuildImageId('aws/codebuild/amazonlinux2-x86_64-standard:3.0'),
