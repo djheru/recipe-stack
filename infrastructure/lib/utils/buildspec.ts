@@ -12,7 +12,7 @@ export const buildPrebuildBuildSpec = ({ name, sourcePath }: { name: string; sou
         'npm install',
       ],
     },
-    build: { commands: ['npm run build', 'npm run deploy --require-approval never'] },
+    build: { commands: ['npm run build', 'npm run deploy -- --require-approval never'] },
   },
 });
 export const buildServiceBuildSpec = ({
