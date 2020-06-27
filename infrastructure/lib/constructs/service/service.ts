@@ -8,7 +8,7 @@ import {
 import { Role } from '@aws-cdk/aws-iam';
 import { IHostedZone } from '@aws-cdk/aws-route53';
 import { Construct, Duration } from '@aws-cdk/core';
-import { ServicePipeline, ServicePipelineProps } from './servicePipeline';
+import { ServicePipeline, ServicePipelineProps } from './service-pipeline';
 
 type EnvironmentMap = { [key: string]: any };
 type SecretsMap = { [key: string]: Secret };

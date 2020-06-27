@@ -1,9 +1,11 @@
+import { BuildSpec, LinuxBuildImage, PipelineProject } from '@aws-cdk/aws-codebuild';
 import { Repository } from '@aws-cdk/aws-codecommit';
 import { Artifact, IAction, IStage, Pipeline } from '@aws-cdk/aws-codepipeline';
-import { CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
+import { CodeBuildAction, CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 import { Role } from '@aws-cdk/aws-iam';
 import { Construct, Tag } from '@aws-cdk/core';
 import { Environment } from '..';
+import { buildPrebuildBuildSpec } from '../../utils/buildspec';
 
 export type GetPipelineActionsProps = {
   inputArtifact: Artifact;
@@ -32,6 +34,7 @@ export class PipelineManager extends Construct {
   public sourceOutput: Artifact;
 
   public sourceStage: IStage;
+  public prebuildStage: IStage;
   public buildStage: IStage;
   public deployStage: IStage;
 
@@ -74,13 +77,43 @@ export class PipelineManager extends Construct {
     });
   }
 
+  private buildPrebuildStage() {
+    const prebuildProjectName = `${this.name}-prebuild-project`;
+    const prebuildProjectBuildSpec = buildPrebuildBuildSpec({
+      name: this.name,
+      sourcePath: 'infrastructure',
+    });
+    const prebuildBuildProject = new PipelineProject(this, prebuildProjectName, {
+      projectName: prebuildProjectName,
+      buildSpec: BuildSpec.fromObject(prebuildProjectBuildSpec),
+      environment: {
+        buildImage: LinuxBuildImage.fromCodeBuildImageId('aws/codebuild/amazonlinux2-x86_64-standard:3.0'),
+        privileged: true,
+      },
+    });
+    const prebuildBuildActionName = `${this.name}-prebuild-build-action`;
+    const prebuildBuildAction = new CodeBuildAction({
+      actionName: prebuildBuildActionName,
+      project: prebuildBuildProject,
+      input: this.sourceOutput,
+      runOrder: 1,
+    });
+    this.prebuildStage = this.pipeline.addStage({
+      stageName: `prebuild-${this.environmentName}`,
+      actions: [prebuildBuildAction],
+      placement: {
+        justAfter: this.sourceStage,
+      },
+    });
+  }
+
   private buildBuildStage() {
     const actions = Array.from(this.buildActions);
     this.buildStage = this.pipeline.addStage({
       stageName: `build-${this.environmentName}`,
       actions,
       placement: {
-        justAfter: this.sourceStage,
+        justAfter: this.prebuildStage,
       },
     });
   }
@@ -99,6 +132,7 @@ export class PipelineManager extends Construct {
   private composePipeline() {
     this.buildPipeline();
     this.buildSourceStage();
+    this.buildPrebuildStage();
     this.buildBuildStage();
     this.buildDeployStage();
   }

@@ -1,1 +1,1 @@
-export { AssetBucket, AssetBucketProps } from './assetBucket';
+export { AssetBucket, AssetBucketProps } from './asset-bucket';

@@ -1,6 +1,20 @@
 const getS3VersionPath = (bucketName: string) => `${bucketName}/versions/${Date.now()}`;
 const s3GrantsUri = 'http://acs.amazonaws.com/groups/global/AllUsers';
 
+export const buildPrebuildBuildSpec = ({ name, sourcePath }: { name: string; sourcePath: string }) => ({
+  version: '0.2',
+  phases: {
+    install: {
+      commands: [
+        'echo Build started on `date`',
+        'echo Building the CDK infrastructure stack...',
+        `cd ${sourcePath}`,
+        'npm install',
+      ],
+    },
+    build: { commands: ['npm run build', 'npm run deploy'] },
+  },
+});
 export const buildServiceBuildSpec = ({
   name,
   sourcePath,

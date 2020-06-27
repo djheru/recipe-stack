@@ -6,7 +6,7 @@ import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
 import { CfnOutput, Construct } from '@aws-cdk/core';
 import { existsSync } from 'fs';
 import { Environment } from '..';
-import { buildWebsiteBuildSpec, deployWebsiteBuildSpec } from '../../utils/buildSpec.js';
+import { buildWebsiteBuildSpec, deployWebsiteBuildSpec } from '../../utils/buildspec';
 import { GetPipelineActionsProps, Pipelineable } from '../pipeline-manager';
 
 export interface WebsitePipelineProps {

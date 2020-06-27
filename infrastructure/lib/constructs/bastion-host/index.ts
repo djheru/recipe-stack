@@ -1,1 +1,1 @@
-export { BastionHostInstance, BastionHostInstanceProps } from './bastionHostInstance';
+export { BastionHostInstance, BastionHostInstanceProps } from './bastion-host-instance';

@@ -6,7 +6,7 @@ import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns
 import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
 import { Construct } from '@aws-cdk/core';
 import { Environment } from '..';
-import { buildServiceBuildSpec } from '../../utils/buildSpec';
+import { buildServiceBuildSpec } from '../../utils/buildspec';
 import { GetPipelineActionsProps, Pipelineable } from '../pipeline-manager';
 
 export interface ServicePipelineProps {

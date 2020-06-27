@@ -6,7 +6,7 @@ import { Bucket } from '@aws-cdk/aws-s3';
 import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
 import { Construct, RemovalPolicy, Tag } from '@aws-cdk/core';
 import { Environment } from '../';
-import { WebsitePipeline } from './websitePipeline';
+import { WebsitePipeline } from './website-pipeline';
 
 export interface WebsiteProps {
   name: string;
