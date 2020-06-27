@@ -2,7 +2,7 @@ import { IConnectable, Port, SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
 import { CfnDBCluster, CfnDBSubnetGroup } from '@aws-cdk/aws-rds';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
 import { CfnOutput, Construct, Tag } from '@aws-cdk/core';
-import { Environment } from '../';
+import { Environment } from '..';
 
 export interface DbClusterServerlessProps {
   name: string;

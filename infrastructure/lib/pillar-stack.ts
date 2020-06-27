@@ -12,7 +12,7 @@ import {
   Service,
   Website,
 } from './constructs';
-import { Pipelineable } from './constructs/pipelineManager';
+import { Pipelineable } from './constructs/pipeline-manager';
 
 type Stage = {
   pipelineManager?: PipelineManager;

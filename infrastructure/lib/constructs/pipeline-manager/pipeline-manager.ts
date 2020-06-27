@@ -3,7 +3,7 @@ import { Artifact, IAction, IStage, Pipeline } from '@aws-cdk/aws-codepipeline';
 import { CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 import { Role } from '@aws-cdk/aws-iam';
 import { Construct, Tag } from '@aws-cdk/core';
-import { Environment } from '../';
+import { Environment } from '..';
 
 export type GetPipelineActionsProps = {
   inputArtifact: Artifact;
