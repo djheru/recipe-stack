@@ -12,7 +12,7 @@ export const buildPrebuildBuildSpec = ({ name, sourcePath }: { name: string; sou
         'npm install',
       ],
     },
-    build: { commands: ['ls', 'npm run build', 'npm run deploy'] },
+    build: { commands: ['ls -lah', 'npm run build', 'npm run deploy'] },
   },
 });
 export const buildServiceBuildSpec = ({
