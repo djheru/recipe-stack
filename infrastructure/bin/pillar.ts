@@ -11,6 +11,7 @@ const pillarStackProps: StackProps = {
     region: process.env.CDK_DEFAULT_REGION,
   },
 };
+
 const devStack = new PillarStack(app, 'recipe-stack', {
   ...pillarStackProps,
   environmentName: 'dev',
