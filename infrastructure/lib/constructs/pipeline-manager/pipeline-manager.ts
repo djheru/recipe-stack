@@ -5,7 +5,7 @@ import { CodeBuildAction, CodeCommitSourceAction } from '@aws-cdk/aws-codepipeli
 import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
 import { Construct, Tag } from '@aws-cdk/core';
 import { Environment } from '..';
-import { buildPrebuildBuildSpec } from '../../utils/buildspec';
+import { buildInfrastructureBuildSpec } from '../../utils/buildspec';
 
 export type GetPipelineActionsProps = {
   inputArtifact: Artifact;
@@ -34,7 +34,7 @@ export class PipelineManager extends Construct {
   public sourceOutput: Artifact;
 
   public sourceStage: IStage;
-  public prebuildStage: IStage;
+  public infrastructureStage: IStage;
   public buildStage: IStage;
   public deployStage: IStage;
 
@@ -77,37 +77,37 @@ export class PipelineManager extends Construct {
     });
   }
 
-  private buildPrebuildStage() {
-    const prebuildProjectName = `${this.name}-prebuild-project`;
-    const prebuildProjectBuildSpec = buildPrebuildBuildSpec({
+  private buildInfrastructureStage() {
+    const infrastructureProjectName = `${this.name}-infrastructure-project`;
+    const infrastructureProjectBuildSpec = buildInfrastructureBuildSpec({
       name: this.name,
       sourcePath: 'infrastructure',
     });
-    const prebuildRoleName = `${this.name}-prebuild-code-build-role`;
-    this.role = new Role(this, prebuildRoleName, {
-      roleName: prebuildRoleName,
+    const infrastructureRoleName = `${this.name}-infrastructure-code-build-role`;
+    this.role = new Role(this, infrastructureRoleName, {
+      roleName: infrastructureRoleName,
       assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
       managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess')],
     });
-    const prebuildBuildProject = new PipelineProject(this, prebuildProjectName, {
-      projectName: prebuildProjectName,
+    const infrastructureBuildProject = new PipelineProject(this, infrastructureProjectName, {
+      projectName: infrastructureProjectName,
       role: this.role,
-      buildSpec: BuildSpec.fromObject(prebuildProjectBuildSpec),
+      buildSpec: BuildSpec.fromObject(infrastructureProjectBuildSpec),
       environment: {
         buildImage: LinuxBuildImage.fromCodeBuildImageId('aws/codebuild/amazonlinux2-x86_64-standard:3.0'),
         privileged: true,
       },
     });
-    const prebuildBuildActionName = `${this.name}-prebuild-build-action`;
-    const prebuildBuildAction = new CodeBuildAction({
-      actionName: prebuildBuildActionName,
-      project: prebuildBuildProject,
+    const infrastructureBuildActionName = `${this.name}-infrastructure-build-action`;
+    const infrastructureBuildAction = new CodeBuildAction({
+      actionName: infrastructureBuildActionName,
+      project: infrastructureBuildProject,
       input: this.sourceOutput,
       runOrder: 1,
     });
-    this.prebuildStage = this.pipeline.addStage({
-      stageName: `prebuild-${this.environmentName}`,
-      actions: [prebuildBuildAction],
+    this.infrastructureStage = this.pipeline.addStage({
+      stageName: `infrastructure-${this.environmentName}`,
+      actions: [infrastructureBuildAction],
       placement: {
         justAfter: this.sourceStage,
       },
@@ -120,7 +120,7 @@ export class PipelineManager extends Construct {
       stageName: `build-${this.environmentName}`,
       actions,
       placement: {
-        justAfter: this.prebuildStage,
+        justAfter: this.infrastructureStage,
       },
     });
   }
@@ -139,7 +139,7 @@ export class PipelineManager extends Construct {
   private composePipeline() {
     this.buildPipeline();
     this.buildSourceStage();
-    this.buildPrebuildStage();
+    this.buildInfrastructureStage();
     this.buildBuildStage();
     this.buildDeployStage();
   }
