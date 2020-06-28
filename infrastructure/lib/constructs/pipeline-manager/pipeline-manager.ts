@@ -87,7 +87,7 @@ export class PipelineManager extends Construct {
     this.role = new Role(this, prebuildRoleName, {
       roleName: prebuildRoleName,
       assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
-      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AWSCloudFormationFullAccess')],
+      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess')],
     });
     const prebuildBuildProject = new PipelineProject(this, prebuildProjectName, {
       projectName: prebuildProjectName,
