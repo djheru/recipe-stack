@@ -24,9 +24,14 @@ type Stage = {
   recipeService?: Service;
 };
 
+export interface PillarStackProps extends StackProps {
+  environmentName: Environment;
+  hostedZoneDomainName: string;
+}
+
 export class PillarStack extends Stack {
   public id: string;
-  public stages: { [key in Environment]?: Stage };
+  public stage: Stage;
   public environmentName: Environment;
 
   public gitRepository: Repository;
@@ -41,19 +46,19 @@ export class PillarStack extends Stack {
   public recipeWebsite: Website;
   public recipeService: Service;
 
-  constructor(scope: Construct, id: string, props: StackProps) {
+  constructor(scope: Construct, id: string, props: PillarStackProps) {
     super(scope, id, props);
 
     this.id = id;
-    this.hostedZoneDomainName = 'di-metal.net';
+    this.hostedZoneDomainName = props.hostedZoneDomainName;
+    this.environmentName = props.environmentName;
 
     this.hostedZoneLookup();
     this.buildGitRepo(id);
+    this.buildStage();
   }
 
-  public buildStage(environmentName: Environment) {
-    this.environmentName = environmentName;
-
+  public buildStage() {
     this.buildPipelineManager();
     this.buildVpcs();
     this.buildBastionHosts();
@@ -62,7 +67,7 @@ export class PillarStack extends Stack {
     this.buildWebsites();
     this.buildServices();
 
-    const stage: Stage = {
+    this.stage = {
       pipelineManager: this.pipelineManager,
       pillarVpc: this.pillarVpc,
       bastionHost: this.bastionHost,
@@ -71,12 +76,6 @@ export class PillarStack extends Stack {
       recipeWebsite: this.recipeWebsite,
       recipeService: this.recipeService,
     };
-
-    if (!this.stages) {
-      this.stages = { [this.environmentName]: stage };
-    } else {
-      this.stages[this.environmentName] = stage;
-    }
 
     this.registerPipelineConstructs();
   }
@@ -190,7 +189,7 @@ export class PillarStack extends Stack {
   }
 
   private registerPipelineConstructs(): void {
-    const stackConstructs = Object.values(<Stage>this.stages[this.environmentName]);
+    const stackConstructs = Object.values(this.stage);
     // typeguard function
     function isPipelineable(construct: Construct) {
       return construct && 'pipelineable' in construct;
