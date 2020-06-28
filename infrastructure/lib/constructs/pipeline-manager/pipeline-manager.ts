@@ -59,6 +59,7 @@ export class PipelineManager extends Construct {
     const pipelineName = `${this.name}-pipeline`;
     this.pipeline = new Pipeline(this, pipelineName, {
       pipelineName,
+      restartExecutionOnUpdate: true,
     });
   }
 
