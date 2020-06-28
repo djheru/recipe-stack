@@ -17,18 +17,11 @@ export interface WebsiteProps {
 }
 
 export class Website extends WebsitePipeline {
-  public name: string;
-  public environmentName: Environment;
-  public sourcePath: string;
-  public hostedZoneDomainName: string;
-  public certificateDomainName: string;
-  public hostedZone: IHostedZone;
-  public frontEndCertificate: DnsValidatedCertificate;
-  public bucketName: string;
-  public siteBucket: Bucket;
-  public distribution: CloudFrontWebDistribution;
-  public deployment: BucketDeployment;
-  public aRecord: ARecord;
+  private certificateDomainName: string;
+  private hostedZone: IHostedZone;
+  private frontEndCertificate: DnsValidatedCertificate;
+  private siteBucket: Bucket;
+  private aRecord: ARecord;
 
   constructor(scope: Construct, id: string, props: WebsiteProps) {
     super(scope, id, props);
@@ -54,7 +47,7 @@ export class Website extends WebsitePipeline {
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `CloudFront website for ${name} running in ${environmentName}`);
   }
 
   private buildCertificate() {
@@ -143,7 +136,7 @@ export class Website extends WebsitePipeline {
 
   private bucketDeployment(websiteAssetPath: string) {
     const deploymentName = `${this.name}-bucket-deployment`;
-    const deployment = new BucketDeployment(this, deploymentName, {
+    new BucketDeployment(this, deploymentName, {
       sources: [Source.asset(websiteAssetPath)],
       destinationBucket: this.siteBucket,
       destinationKeyPrefix: 'live',

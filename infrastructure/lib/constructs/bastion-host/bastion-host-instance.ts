@@ -17,6 +17,7 @@ export interface BastionHostInstanceProps extends BastionHostLinuxProps {
 
 export class BastionHostInstance extends Construct {
   public instance: BastionHostLinux;
+
   constructor(scope: Construct, id: string, props: BastionHostInstanceProps) {
     super(scope, id);
 
@@ -45,6 +46,7 @@ export class BastionHostInstance extends Construct {
     # If you don't connect within 60 sec, you get: "Permission denied (publickey,gssapi-keyex,gssapi-with-mic)."
     */
     const { name, environmentName, vpc, ...restProps } = props;
+
     const instanceName = `${name}-instance`;
 
     const defaultProps = {
@@ -64,6 +66,6 @@ export class BastionHostInstance extends Construct {
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `Bastion host for ${name} running in ${environmentName}`);
   }
 }

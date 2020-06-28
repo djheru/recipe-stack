@@ -5,9 +5,8 @@ import {
   ApplicationLoadBalancedFargateService,
   ApplicationLoadBalancedFargateServiceProps,
 } from '@aws-cdk/aws-ecs-patterns';
-import { Role } from '@aws-cdk/aws-iam';
 import { IHostedZone } from '@aws-cdk/aws-route53';
-import { Construct, Duration } from '@aws-cdk/core';
+import { Construct, Duration, Tag } from '@aws-cdk/core';
 import { ServicePipeline, ServicePipelineProps } from './service-pipeline';
 
 type EnvironmentMap = { [key: string]: any };
@@ -23,16 +22,14 @@ export interface ServiceProps extends ServicePipelineProps {
 }
 
 export class Service extends ServicePipeline {
-  public routePath: string;
-  public vpc: IVpc;
-  public pipelineRole: Role;
-  public repository: Repository;
   public fargateService: ApplicationLoadBalancedFargateService;
-  public domainName: string;
-  public hostedZone: IHostedZone;
-  public environment?: EnvironmentMap;
-  public secrets?: SecretsMap;
-  public static CLUSTER: Cluster | undefined;
+  private routePath: string;
+  private vpc: IVpc;
+  private domainName: string;
+  private hostedZone: IHostedZone;
+  private environment?: EnvironmentMap;
+  private secrets?: SecretsMap;
+  private static CLUSTER: Cluster | undefined;
 
   constructor(scope: Construct, id: string, props: ServiceProps) {
     const {
@@ -61,6 +58,10 @@ export class Service extends ServicePipeline {
     this.buildContainerRepository();
     this.buildFargateService();
     this.configureServiceAutoscaling();
+
+    Tag.add(this, 'name', name);
+    Tag.add(this, 'environmentName', environmentName);
+    Tag.add(this, 'description', `ECS service for ${name} running in ${environmentName}`);
   }
 
   private buildContainerRepository() {

@@ -11,13 +11,15 @@ export enum DefaultCidr {
   demo = '10.100.0.0/16',
   dev = '10.110.0.0/16',
   prod = '10.120.0.0/16',
+  prototype = '10.130.0.0/16',
 }
 
 export type ValidDefaultCidr = keyof typeof DefaultCidr;
 
 export class PillarVpc extends Construct {
   public instance: Vpc;
-  public environmentName: Environment;
+  private environmentName: Environment;
+
   public isolatedSubnetIds: string[];
   public publicSubnetIds: string[];
   public privateSubnetIds: string[];
@@ -71,7 +73,7 @@ export class PillarVpc extends Construct {
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `VPC for ${name} running in ${environmentName}`);
   }
 
   groupSubnets() {

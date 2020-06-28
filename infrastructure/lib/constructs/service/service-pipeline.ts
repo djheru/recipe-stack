@@ -43,7 +43,6 @@ export class ServicePipeline extends Construct implements Pipelineable {
       roleName,
       assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
       managedPolicies: [
-        ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
         ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryPowerUser'),
         ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLogsFullAccess'),
       ],

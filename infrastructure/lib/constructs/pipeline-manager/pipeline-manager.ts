@@ -13,6 +13,7 @@ export type GetPipelineActionsProps = {
 };
 
 export interface Pipelineable {
+  pipelineable: boolean;
   getBuildActions(buildArtifacts: GetPipelineActionsProps): IAction[];
   getDeployActions(deployArtifacts: GetPipelineActionsProps): IAction[];
 }
@@ -24,19 +25,16 @@ export interface PipelineManagerProps {
 }
 
 export class PipelineManager extends Construct {
-  public name: string;
-  public environmentName: Environment;
-  public gitRepository: Repository;
+  private name: string;
+  private environmentName: Environment;
+  private gitRepository: Repository;
+  private pipeline: Pipeline;
+  private sourceOutput: Artifact;
 
-  public role: Role;
-  public pipeline: Pipeline;
-
-  public sourceOutput: Artifact;
-
-  public sourceStage: IStage;
-  public infrastructureStage: IStage;
-  public buildStage: IStage;
-  public deployStage: IStage;
+  private sourceStage: IStage;
+  private infrastructureStage: IStage;
+  private buildStage: IStage;
+  private deployStage: IStage;
 
   private buildActions: Set<IAction> = new Set();
   private deployActions: Set<IAction> = new Set();
@@ -52,7 +50,7 @@ export class PipelineManager extends Construct {
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `Pipeline for ${name} running in ${environmentName}`);
   }
 
   private buildPipeline() {
@@ -85,14 +83,14 @@ export class PipelineManager extends Construct {
       sourcePath: 'infrastructure',
     });
     const infrastructureRoleName = `${this.name}-infrastructure-code-build-role`;
-    this.role = new Role(this, infrastructureRoleName, {
+    const role = new Role(this, infrastructureRoleName, {
       roleName: infrastructureRoleName,
       assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
       managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess')],
     });
     const infrastructureBuildProject = new PipelineProject(this, infrastructureProjectName, {
       projectName: infrastructureProjectName,
-      role: this.role,
+      role,
       buildSpec: BuildSpec.fromObject(infrastructureProjectBuildSpec),
       environment: {
         buildImage: LinuxBuildImage.fromCodeBuildImageId('aws/codebuild/amazonlinux2-x86_64-standard:3.0'),

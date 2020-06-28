@@ -19,22 +19,23 @@ export interface DbClusterServerlessProps {
 
 export class DbClusterServerless extends Construct {
   public instance: CfnDBCluster;
-  public vpc: Vpc;
-  public clusterName: string;
-  public clusterIdentifier: string;
   public databaseName: string;
-  public engine: string;
-  public subnetGroup: CfnDBSubnetGroup;
   public dbUsername: string;
   public dbPasswordSecret: Secret;
-  public securityGroup: SecurityGroup;
   public usernameSecretArn: string;
   public passwordSecretArn: string;
-  public subnetIds: string[];
-  public port: number;
-  public minCapacity: number;
-  public maxCapacity: number;
-  public secondsUntilAutoPause: number;
+
+  private vpc: Vpc;
+  private clusterName: string;
+  private clusterIdentifier: string;
+  private engine: string;
+  private subnetGroup: CfnDBSubnetGroup;
+  private securityGroup: SecurityGroup;
+  private subnetIds: string[];
+  private port: number;
+  private minCapacity: number;
+  private maxCapacity: number;
+  private secondsUntilAutoPause: number;
   private connections: IConnectable[];
 
   constructor(scope: Construct, id: string, props: DbClusterServerlessProps) {
@@ -65,7 +66,7 @@ export class DbClusterServerless extends Construct {
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `Database for ${name} running in ${environmentName}`);
   }
 
   private buildCredentials() {

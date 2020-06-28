@@ -9,6 +9,7 @@ export interface AssetBucketProps extends BucketProps {
 
 export class AssetBucket extends Construct {
   public instance: Bucket;
+
   constructor(scope: Construct, id: string, props: AssetBucketProps) {
     super(scope, id);
     const { name, environmentName, ...restProps } = props;
@@ -29,6 +30,6 @@ export class AssetBucket extends Construct {
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `Asset bucket for ${name} running in ${environmentName}`);
   }
 }
