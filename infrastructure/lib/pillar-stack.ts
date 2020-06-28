@@ -14,14 +14,14 @@ import {
 } from './constructs';
 import { Pipelineable } from './constructs/pipeline-manager';
 
-type Stage = {
-  pipelineManager?: PipelineManager;
-  pillarVpc?: PillarVpc;
-  bastionHost?: BastionHostInstance;
+type StackResources = {
   assetBucket?: AssetBucket;
+  bastionHost?: BastionHostInstance;
+  pillarVpc?: PillarVpc;
+  pipelineManager?: PipelineManager;
   recipesDbCluster?: DbClusterServerless;
-  recipeWebsite?: Website;
   recipeService?: Service;
+  recipeWebsite?: Website;
 };
 
 export interface PillarStackProps extends StackProps {
@@ -30,33 +30,37 @@ export interface PillarStackProps extends StackProps {
 }
 
 export class PillarStack extends Stack {
+  public readonly domainName: string = 'di-metal.net';
+
   public id: string;
-  public stage: Stage;
+  public stackResources: StackResources;
   public environmentName: Environment;
 
-  public gitRepository: Repository;
-  public hostedZoneDomainName: string;
-  public hostedZone: IHostedZone;
+  private gitRepository: Repository;
+  private hostedZoneDomainName: string;
+  private hostedZone: IHostedZone;
 
-  public pipelineManager: PipelineManager;
-  public pillarVpc: PillarVpc;
-  public bastionHost: BastionHostInstance;
-  public assetBucket: AssetBucket;
-  public recipesDbCluster: DbClusterServerless;
-  public recipeWebsite: Website;
-  public recipeService: Service;
+  private pipelineManager: PipelineManager;
+  private pillarVpc: PillarVpc;
+  private bastionHost: BastionHostInstance;
+  private assetBucket: AssetBucket;
+  private recipesDbCluster: DbClusterServerless;
+  private recipeWebsite: Website;
+  private recipeService: Service;
 
   constructor(scope: Construct, id: string, props: PillarStackProps) {
     super(scope, id, props);
 
-    this.id = id;
-    this.hostedZoneDomainName = props.hostedZoneDomainName;
-    this.environmentName = props.environmentName;
+    const { environmentName, hostedZoneDomainName } = props;
 
-    this.buildStage();
+    this.id = id;
+    this.hostedZoneDomainName = hostedZoneDomainName;
+    this.environmentName = environmentName;
+
+    this.buildStackResources();
   }
 
-  public buildStage() {
+  private buildStackResources() {
     this.hostedZoneLookup();
     this.buildGitRepo();
     this.buildPipelineManager();
@@ -67,14 +71,14 @@ export class PillarStack extends Stack {
     this.buildWebsite();
     this.buildService();
 
-    this.stage = {
-      pipelineManager: this.pipelineManager,
-      pillarVpc: this.pillarVpc,
-      bastionHost: this.bastionHost,
+    this.stackResources = {
       assetBucket: this.assetBucket,
+      bastionHost: this.bastionHost,
+      pillarVpc: this.pillarVpc,
+      pipelineManager: this.pipelineManager,
       recipesDbCluster: this.recipesDbCluster,
-      recipeWebsite: this.recipeWebsite,
       recipeService: this.recipeService,
+      recipeWebsite: this.recipeWebsite,
     };
 
     this.registerPipelineConstructs();
@@ -141,7 +145,7 @@ export class PillarStack extends Stack {
 
   private buildWebsite() {
     const certificateDomainName =
-      this.environmentName === 'prod' ? 'web.di-metal.net' : `${this.environmentName}.web.di-metal.net`;
+      this.environmentName === 'prod' ? `web.${this.domainName}` : `${this.environmentName}.web.${this.domainName}`;
     const websiteName = `${this.environmentName}-recipe-website`;
     this.recipeWebsite = new Website(this, websiteName, {
       name: websiteName,
@@ -169,7 +173,7 @@ export class PillarStack extends Stack {
     };
     this.recipeService = new Service(this, serviceName, {
       name: serviceName,
-      domainName: 'di-metal.net',
+      domainName: this.domainName,
       environmentName: this.environmentName,
       secrets: serviceSecrets,
       environment: serviceEnvironmentVariables,
@@ -182,7 +186,7 @@ export class PillarStack extends Stack {
   }
 
   private registerPipelineConstructs(): void {
-    const stackConstructs = Object.values(this.stage);
+    const stackConstructs = Object.values(this.stackResources);
     const registeredConstructs: Pipelineable[] = <Pipelineable[]>(
       stackConstructs.filter((construct: any) => !!(construct && 'pipelineable' in construct))
     );
