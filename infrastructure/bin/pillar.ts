@@ -14,3 +14,4 @@ const stackProps: cdk.StackProps = {
 const stack = new PillarStack(app, 'recipe-stack', stackProps);
 
 stack.buildStage('dev');
+stack.buildStage('prototype');
