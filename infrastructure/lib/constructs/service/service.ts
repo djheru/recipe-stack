@@ -6,7 +6,7 @@ import {
   ApplicationLoadBalancedFargateServiceProps,
 } from '@aws-cdk/aws-ecs-patterns';
 import { IHostedZone } from '@aws-cdk/aws-route53';
-import { Construct, Duration, Tag } from '@aws-cdk/core';
+import { Construct, Duration, RemovalPolicy, Tag } from '@aws-cdk/core';
 import { ServicePipeline, ServicePipelineProps } from './service-pipeline';
 
 type EnvironmentMap = { [key: string]: any };
@@ -73,6 +73,7 @@ export class Service extends ServicePipeline {
   private buildImageRepository() {
     const repositoryName = `${this.name}-ecr-repository`;
     this.repository = new Repository(this, repositoryName, {
+      removalPolicy: RemovalPolicy.DESTROY,
       repositoryName: this.name,
     });
     this.repository.addLifecycleRule({ tagPrefixList: ['prod'], maxImageCount: 999 });
