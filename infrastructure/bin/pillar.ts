@@ -3,8 +3,11 @@ import { App, StackProps } from '@aws-cdk/core';
 import 'source-map-support/register';
 import { PillarStack } from '../lib/pillar-stack';
 
+// The app is the root of the construct tree
 const app = new App();
 
+// It is a best practice to explicitly define the account and region,
+// which are pulled from environment variables
 const pillarStackProps: StackProps = {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -12,6 +15,7 @@ const pillarStackProps: StackProps = {
   },
 };
 
+// Each instance of the stack represents a new full environment
 const devStack = new PillarStack(app, 'recipe-stack', {
   ...pillarStackProps,
   environmentName: 'dev',

@@ -107,7 +107,7 @@ export class PipelineManager extends Construct {
       placement: {
         justAfter: this.sourceStage,
       },
-      stageName: `infrastructure-${this.environmentName}`,
+      stageName: `update-infrastructure-${this.environmentName}`,
     });
   }
 
@@ -118,7 +118,7 @@ export class PipelineManager extends Construct {
       placement: {
         justAfter: this.infrastructureStage,
       },
-      stageName: `build-${this.environmentName}`,
+      stageName: `build-application-${this.environmentName}`,
     });
   }
 
@@ -129,7 +129,7 @@ export class PipelineManager extends Construct {
       placement: {
         justAfter: this.buildStage,
       },
-      stageName: `deploy-${this.environmentName}`,
+      stageName: `deploy-application-${this.environmentName}`,
     });
   }
 

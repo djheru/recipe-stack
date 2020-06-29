@@ -14,27 +14,15 @@ import {
 } from './constructs';
 import { Pipelineable } from './constructs/pipeline-manager';
 
-type StackResources = {
-  assetBucket?: AssetBucket;
-  bastionHost?: BastionHostInstance;
-  pillarVpc?: PillarVpc;
-  pipelineManager?: PipelineManager;
-  recipesDbCluster?: DbClusterServerless;
-  recipeService?: Service;
-  recipeWebsite?: Website;
-};
-
 export interface PillarStackProps extends StackProps {
   environmentName: Environment;
   hostedZoneDomainName: string;
 }
 
 export class PillarStack extends Stack {
-  public readonly domainName: string = 'di-metal.net';
-
   public environmentName: Environment;
   public id: string;
-  public stackResources: StackResources;
+  public stackResources: Construct[];
 
   private assetBucket: AssetBucket;
   private bastionHost: BastionHostInstance;
@@ -70,15 +58,15 @@ export class PillarStack extends Stack {
     this.buildWebsite();
     this.buildService();
 
-    this.stackResources = {
-      assetBucket: this.assetBucket,
-      bastionHost: this.bastionHost,
-      pillarVpc: this.pillarVpc,
-      pipelineManager: this.pipelineManager,
-      recipesDbCluster: this.recipesDbCluster,
-      recipeService: this.recipeService,
-      recipeWebsite: this.recipeWebsite,
-    };
+    this.stackResources = [
+      this.assetBucket,
+      this.bastionHost,
+      this.pillarVpc,
+      this.pipelineManager,
+      this.recipesDbCluster,
+      this.recipeService,
+      this.recipeWebsite,
+    ];
 
     this.registerPipelineConstructs();
   }
@@ -144,7 +132,9 @@ export class PillarStack extends Stack {
 
   private buildWebsite() {
     const certificateDomainName =
-      this.environmentName === 'prod' ? `web.${this.domainName}` : `${this.environmentName}.web.${this.domainName}`;
+      this.environmentName === 'prod'
+        ? `web.${this.hostedZoneDomainName}`
+        : `${this.environmentName}.web.${this.hostedZoneDomainName}`;
     const websiteName = `${this.environmentName}-recipe-website`;
     this.recipeWebsite = new Website(this, websiteName, {
       environmentName: this.environmentName,
@@ -171,7 +161,7 @@ export class PillarStack extends Stack {
       RECIPES_DB_USERNAME: this.recipesDbCluster.dbUsername,
     };
     this.recipeService = new Service(this, serviceName, {
-      domainName: this.domainName,
+      domainName: this.hostedZoneDomainName,
       environment: serviceEnvironmentVariables,
       environmentName: this.environmentName,
       hostedZone: this.hostedZone,
@@ -185,10 +175,8 @@ export class PillarStack extends Stack {
   }
 
   private registerPipelineConstructs(): void {
-    const stackConstructs = Object.values(this.stackResources);
-    const registeredConstructs: Pipelineable[] = <Pipelineable[]>(
-      stackConstructs.filter((construct: any) => !!(construct && 'pipelineable' in construct))
-    );
-    this.pipelineManager.registerConstructs(registeredConstructs);
+    const pipelineableFilter = (construct: Construct) => !!(construct && 'pipelineable' in construct);
+    const registeredConstructs = this.stackResources.filter(pipelineableFilter);
+    this.pipelineManager.registerConstructs(<Pipelineable[]>(<unknown>registeredConstructs));
   }
 }
