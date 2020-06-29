@@ -6,16 +6,25 @@ export const buildInfrastructureBuildSpec = ({ name, sourcePath }: { name: strin
   phases: {
     install: {
       commands: [
-        'echo Build started on `date`',
+        'echo Build started at `date`',
+        `echo Beginning build operations for "${name}"`,
         'echo Building the CDK infrastructure stack...',
         `cd ${sourcePath}`,
         'npm install',
       ],
     },
     build: { commands: ['npm run build'] },
-    post_build: { commands: ['npm run deploy -- --require-approval never'] },
+    post_build: {
+      commands: [
+        'Updating the CDK infrastructure stack...',
+        'npm run cdk -- diff',
+        'npm run deploy -- --require-approval never',
+        'echo Build completed at `date`',
+      ],
+    },
   },
 });
+
 export const buildServiceBuildSpec = ({
   name,
   sourcePath,
@@ -28,27 +37,32 @@ export const buildServiceBuildSpec = ({
   version: '0.2',
   phases: {
     pre_build: {
-      commands: ['echo Logging in to AWS ECR', '$(aws ecr get-login --no-include-email --region us-west-2)'],
+      commands: [
+        'echo Build started at `date`',
+        `echo Beginning build operations for "${name}"`,
+        'echo Logging in to AWS ECR...',
+        '$(aws ecr get-login --no-include-email --region us-west-2)',
+      ],
     },
     build: {
       commands: [
-        'echo Build started on `date`',
         'echo Building the Docker image...',
         `cd ${sourcePath}`,
         'export BUILD_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:8}',
         'echo BUILD_TAG: $BUILD_TAG',
+        'echo Tagging the Docker image...',
         `docker build -t ${name} .`,
         `docker tag ${name}:latest ${imageName}:$BUILD_TAG`,
       ],
     },
     post_build: {
       commands: [
-        'echo Build completed on `date`',
         'echo Pushing the Docker image...',
         `docker push ${imageName}:$BUILD_TAG`,
-        `echo "Saving new imagedefinitions.json as a build artifact"`,
+        `echo "Saving new imagedefinitions.json as a build artifact..."`,
         `printf '[{"name": "${name}", "imageUri": "${imageName}:%s"}]' $BUILD_TAG > imagedefinitions.json`,
         'cat imagedefinitions.json',
+        'echo Build completed on `date`',
       ],
     },
   },
@@ -58,6 +72,7 @@ export const buildServiceBuildSpec = ({
     'discard-paths': true,
   },
 });
+
 export const buildWebsiteBuildSpec = ({ name, sourcePath }: { name: string; sourcePath: string }) => ({
   version: '0.2',
   phases: {
@@ -66,22 +81,22 @@ export const buildWebsiteBuildSpec = ({ name, sourcePath }: { name: string; sour
         nodejs: 10,
       },
       commands: [
-        `echo Beginning Build Operations for "${name}"`,
-        'echo Installing AWS CLI',
+        'echo Build started at `date`',
+        `echo Beginning build operations for "${name}"`,
+        'echo Installing AWS CLI...',
         'pip install awscli --upgrade --user',
-        'echo check version',
         'aws --version',
         `cd ${sourcePath}`,
-        'echo Installing NPM Dependencies',
+        'echo Installing NPM Dependencies...',
         'npm install',
         'echo Installation Complete',
       ],
     },
     pre_build: {
-      commands: ['echo Running Tests', 'CI=true npm test'],
+      commands: ['echo Running tests...', 'CI=true npm test'],
     },
     build: {
-      commands: ['echo Build Started on `date`', 'echo Building Web App', 'CI=true npm run build'],
+      commands: ['echo building web app...', 'CI=true npm run build', 'echo Build completed on `date`'],
     },
   },
   artifacts: {
@@ -106,30 +121,31 @@ export const deployWebsiteBuildSpec = ({
         nodejs: 10,
       },
       commands: [
-        `echo Beginning Deploy Operations for "${name}"`,
-        'echo Installing AWS CLI',
+        'echo Build started at `date`',
+        `echo Beginning deploy operations for "${name}"`,
+        'echo Installing AWS CLI...',
         'pip install awscli --upgrade --user',
-        'echo check version',
         'aws --version',
       ],
     },
     pre_build: {
       commands: [
-        `echo Copying Build Files to ${getS3VersionPath(bucketName)}`,
+        `echo Copying build files to ${getS3VersionPath(bucketName)}...`,
         `aws s3 cp build s3://${getS3VersionPath(bucketName)} --recursive`,
       ],
     },
     build: {
       commands: [
-        'echo Copying Build Files to CloudFront Origin Folder',
+        'echo Copying build files to CloudFront origin folder...',
         `aws s3 rm s3://${bucketName}/live --recursive`,
         `aws s3 cp build s3://${bucketName}/live --recursive --grants read=uri=${s3GrantsUri}`,
       ],
     },
     post_build: {
       commands: [
-        `echo Creating CloudFront Invalidation to reset the cache`,
+        `echo Creating CloudFront invalidation to reset the cache...`,
         `aws cloudfront create-invalidation --distribution-id ${distributionId} --paths "/index.html"`,
+        'echo Build completed on `date`',
       ],
     },
   },

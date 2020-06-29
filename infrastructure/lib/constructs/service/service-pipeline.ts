@@ -10,27 +10,28 @@ import { buildServiceBuildSpec } from '../../utils/buildspec';
 import { GetPipelineActionsProps, Pipelineable } from '../pipeline-manager';
 
 export interface ServicePipelineProps {
-  name: string;
   environmentName: Environment;
+  name: string;
   sourcePath: string;
 }
 
 export class ServicePipeline extends Construct implements Pipelineable {
-  public name: string;
   public environmentName: Environment;
-  public sourcePath: string;
+  public fargateService: ApplicationLoadBalancedFargateService;
+  public name: string;
   public pipelineRole: Role;
   public repository: Repository;
-  public fargateService: ApplicationLoadBalancedFargateService;
+  public sourcePath: string;
+
   public readonly pipelineable: boolean = true;
 
   constructor(scope: Construct, id: string, props: ServicePipelineProps) {
     super(scope, id);
 
-    const { name, environmentName, sourcePath } = props;
+    const { environmentName, name, sourcePath } = props;
 
-    this.name = name;
     this.environmentName = environmentName;
+    this.name = name;
     this.sourcePath = sourcePath;
   }
 
@@ -40,12 +41,12 @@ export class ServicePipeline extends Construct implements Pipelineable {
     }
     const roleName = `${this.name}-code-build-role`;
     this.pipelineRole = new Role(this, roleName, {
-      roleName,
       assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
       managedPolicies: [
         ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryPowerUser'),
         ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLogsFullAccess'),
       ],
+      roleName,
     });
     return this.pipelineRole;
   }
@@ -59,20 +60,20 @@ export class ServicePipeline extends Construct implements Pipelineable {
       imageName: this.repository.repositoryUri,
     });
     const buildProject = new PipelineProject(this, buildProjectName, {
-      projectName: buildProjectName,
-      role,
       buildSpec: BuildSpec.fromObject(buildProjectBuildSpec),
       environment: {
         buildImage: LinuxBuildImage.fromCodeBuildImageId('aws/codebuild/amazonlinux2-x86_64-standard:3.0'),
         privileged: true,
       },
+      projectName: buildProjectName,
+      role,
     });
     const buildActionName = `${this.name}-codebuild-build-action`;
     const buildAction = new CodeBuildAction({
       actionName: buildActionName,
-      project: buildProject,
       input: inputArtifact,
       outputs: [outputArtifact as Artifact],
+      project: buildProject,
       runOrder: 2,
     });
     return [buildAction];
@@ -82,9 +83,9 @@ export class ServicePipeline extends Construct implements Pipelineable {
     const deployActionName = `${this.name}-deploy-action`;
     const deployAction = new EcsDeployAction({
       actionName: deployActionName,
-      service: this.fargateService.service,
       input: inputArtifact,
       runOrder: 3,
+      service: this.fargateService.service,
     });
     return [deployAction];
   }

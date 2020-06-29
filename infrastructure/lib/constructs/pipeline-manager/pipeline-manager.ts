@@ -19,33 +19,31 @@ export interface Pipelineable {
 }
 
 export interface PipelineManagerProps {
-  name: string;
   environmentName: Environment;
   gitRepository: Repository;
+  name: string;
 }
 
 export class PipelineManager extends Construct {
-  private name: string;
+  private buildActions: Set<IAction> = new Set();
+  private buildStage: IStage;
+  private deployActions: Set<IAction> = new Set();
+  private deployStage: IStage;
   private environmentName: Environment;
   private gitRepository: Repository;
+  private infrastructureStage: IStage;
+  private name: string;
   private pipeline: Pipeline;
   private sourceOutput: Artifact;
-
   private sourceStage: IStage;
-  private infrastructureStage: IStage;
-  private buildStage: IStage;
-  private deployStage: IStage;
-
-  private buildActions: Set<IAction> = new Set();
-  private deployActions: Set<IAction> = new Set();
 
   constructor(scope: Construct, id: string, props: PipelineManagerProps) {
     super(scope, id);
-    const { name, environmentName, gitRepository } = props;
+    const { environmentName, gitRepository, name } = props;
 
-    this.name = name;
     this.environmentName = environmentName;
     this.gitRepository = gitRepository;
+    this.name = name;
     this.sourceOutput = new Artifact();
 
     Tag.add(this, 'name', name);
@@ -65,14 +63,14 @@ export class PipelineManager extends Construct {
     const sourceActionName = `${this.name}-codecommit-source-action`;
     const sourceAction = new CodeCommitSourceAction({
       actionName: sourceActionName,
-      repository: this.gitRepository,
       branch: this.environmentName,
       output: this.sourceOutput,
+      repository: this.gitRepository,
       runOrder: 1,
     });
     this.sourceStage = this.pipeline.addStage({
-      stageName: `source-${this.environmentName}`,
       actions: [sourceAction],
+      stageName: `source-${this.environmentName}`,
     });
   }
 
@@ -84,54 +82,54 @@ export class PipelineManager extends Construct {
     });
     const infrastructureRoleName = `${this.name}-infrastructure-code-build-role`;
     const role = new Role(this, infrastructureRoleName, {
-      roleName: infrastructureRoleName,
       assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
       managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess')],
+      roleName: infrastructureRoleName,
     });
     const infrastructureBuildProject = new PipelineProject(this, infrastructureProjectName, {
-      projectName: infrastructureProjectName,
-      role,
       buildSpec: BuildSpec.fromObject(infrastructureProjectBuildSpec),
       environment: {
         buildImage: LinuxBuildImage.fromCodeBuildImageId('aws/codebuild/amazonlinux2-x86_64-standard:3.0'),
         privileged: true,
       },
+      projectName: infrastructureProjectName,
+      role,
     });
     const infrastructureBuildActionName = `${this.name}-infrastructure-build-action`;
     const infrastructureBuildAction = new CodeBuildAction({
       actionName: infrastructureBuildActionName,
-      project: infrastructureBuildProject,
       input: this.sourceOutput,
+      project: infrastructureBuildProject,
       runOrder: 1,
     });
     this.infrastructureStage = this.pipeline.addStage({
-      stageName: `infrastructure-${this.environmentName}`,
       actions: [infrastructureBuildAction],
       placement: {
         justAfter: this.sourceStage,
       },
+      stageName: `infrastructure-${this.environmentName}`,
     });
   }
 
   private buildBuildStage() {
     const actions = Array.from(this.buildActions);
     this.buildStage = this.pipeline.addStage({
-      stageName: `build-${this.environmentName}`,
       actions,
       placement: {
         justAfter: this.infrastructureStage,
       },
+      stageName: `build-${this.environmentName}`,
     });
   }
 
   private buildDeployStage() {
     const actions = Array.from(this.deployActions);
     this.deployStage = this.pipeline.addStage({
-      stageName: `deploy-${this.environmentName}`,
       actions,
       placement: {
         justAfter: this.buildStage,
       },
+      stageName: `deploy-${this.environmentName}`,
     });
   }
 

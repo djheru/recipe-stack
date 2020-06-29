@@ -12,52 +12,58 @@ import { ServicePipeline, ServicePipelineProps } from './service-pipeline';
 type EnvironmentMap = { [key: string]: any };
 type SecretsMap = { [key: string]: Secret };
 export interface ServiceProps extends ServicePipelineProps {
-  routePath: string;
+  cluster?: Cluster;
   domainName?: string;
   environment?: EnvironmentMap;
   hostedZone: IHostedZone;
+  routePath: string;
   secrets?: SecretsMap;
   vpc: IVpc;
-  cluster?: Cluster;
 }
 
 export class Service extends ServicePipeline {
-  public fargateService: ApplicationLoadBalancedFargateService;
-  private routePath: string;
-  private vpc: IVpc;
   private domainName: string;
-  private hostedZone: IHostedZone;
   private environment?: EnvironmentMap;
+  private hostedZone: IHostedZone;
+  private routePath: string;
   private secrets?: SecretsMap;
+  private vpc: IVpc;
+
   private static CLUSTER: Cluster | undefined;
 
   constructor(scope: Construct, id: string, props: ServiceProps) {
     const {
-      name,
       cluster,
       domainName,
-      environmentName,
       environment,
+      environmentName,
       hostedZone,
+      name,
+      routePath,
       secrets,
       sourcePath,
       vpc,
-      routePath,
     } = props;
 
     super(scope, id, { name, environmentName, sourcePath });
 
-    this.environment = environment;
-    this.secrets = secrets;
-    this.vpc = vpc;
     this.domainName = `${this.name}.${domainName}`;
+    this.environment = environment;
     this.hostedZone = hostedZone;
     this.routePath = routePath;
+    this.secrets = secrets;
+    this.vpc = vpc;
+
     Service.CLUSTER = cluster;
 
     this.buildImageRepository();
     this.buildFargateService();
-    this.configureServiceAutoscaling();
+    this.configureServiceAutoscaling({
+      maxCapacity: 4,
+      minCapacity: 1,
+      cpuTargetUtilizationPercent: 50,
+      ramTargetUtilizationPercent: 50,
+    });
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
@@ -75,9 +81,9 @@ export class Service extends ServicePipeline {
 
   private buildTaskImageOptions(environment?: EnvironmentMap, secrets?: SecretsMap) {
     const taskImageOptions: any = {
-      image: ContainerImage.fromEcrRepository(this.repository, 'latest'),
       containerName: this.name,
       containerPort: 3000,
+      image: ContainerImage.fromEcrRepository(this.repository, 'latest'),
     };
     if (environment) {
       taskImageOptions.environment = environment;
@@ -92,11 +98,11 @@ export class Service extends ServicePipeline {
     const taskImageOptions = this.buildTaskImageOptions(this.environment, this.secrets);
 
     let fargateParams: ApplicationLoadBalancedFargateServiceProps = {
-      serviceName: this.name,
-      memoryLimitMiB: 1024,
-      desiredCount: 1,
       cpu: 512,
       cluster: this.getCluster(),
+      desiredCount: 1,
+      memoryLimitMiB: 1024,
+      serviceName: this.name,
       taskImageOptions,
     };
 
@@ -116,15 +122,15 @@ export class Service extends ServicePipeline {
     });
   }
 
-  private configureServiceAutoscaling(
-    minCapacity = 1,
+  private configureServiceAutoscaling({
     maxCapacity = 4,
-    cpuTargetUtilizationPercent: number = 50,
-    ramTargetUtilizationPercent: number = 50,
-  ) {
+    minCapacity = 1,
+    cpuTargetUtilizationPercent = 50,
+    ramTargetUtilizationPercent = 50,
+  }) {
     const scalableTarget = this.fargateService.service.autoScaleTaskCount({
-      minCapacity,
       maxCapacity,
+      minCapacity,
     });
 
     scalableTarget.scaleOnCpuUtilization('CpuScaling', {
@@ -141,11 +147,11 @@ export class Service extends ServicePipeline {
       const clusterName = `${this.name}-cluster`;
       Service.CLUSTER = new Cluster(this, clusterName, {
         clusterName,
-        vpc: this.vpc,
         containerInsights: true,
         defaultCloudMapNamespace: {
           name: this.name,
         },
+        vpc: this.vpc,
       });
     } else {
       console.log('using existing cluster');

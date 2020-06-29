@@ -10,26 +10,27 @@ import { buildWebsiteBuildSpec, deployWebsiteBuildSpec } from '../../utils/build
 import { GetPipelineActionsProps, Pipelineable } from '../pipeline-manager';
 
 export interface WebsitePipelineProps {
-  name: string;
   environmentName: Environment;
+  name: string;
   sourcePath: string;
 }
 
 export class WebsitePipeline extends Construct implements Pipelineable {
-  public name: string;
-  public environmentName: Environment;
-  public sourcePath: string;
   public bucketName: string;
   public distribution: CloudFrontWebDistribution;
+  public environmentName: Environment;
+  public name: string;
   public pipelineRole: Role;
+  public sourcePath: string;
+
   public readonly pipelineable: boolean = true;
 
   constructor(scope: Construct, id: string, props: WebsitePipelineProps) {
     super(scope, id);
     const { name, environmentName, sourcePath } = props;
 
-    this.name = name;
     this.environmentName = environmentName;
+    this.name = name;
     this.sourcePath = sourcePath;
   }
 
@@ -39,13 +40,13 @@ export class WebsitePipeline extends Construct implements Pipelineable {
     }
     const roleName = `${this.name}-code-build-role`;
     this.pipelineRole = new Role(this, roleName, {
-      roleName,
       assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
       managedPolicies: [
         ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
         ManagedPolicy.fromAwsManagedPolicyName('CloudFrontFullAccess'),
         ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLogsFullAccess'),
       ],
+      roleName,
     });
     return this.pipelineRole;
   }
@@ -58,16 +59,16 @@ export class WebsitePipeline extends Construct implements Pipelineable {
       sourcePath: this.sourcePath,
     });
     const buildProject = new PipelineProject(this, buildProjectName, {
+      buildSpec: BuildSpec.fromObject(buildProjectBuildSpec),
       projectName: buildProjectName,
       role,
-      buildSpec: BuildSpec.fromObject(buildProjectBuildSpec),
     });
     const buildActionName = `${this.name}-codebuild-build-action`;
     const buildAction = new CodeBuildAction({
       actionName: buildActionName,
-      project: buildProject,
       input: inputArtifact,
       outputs: [outputArtifact as Artifact],
+      project: buildProject,
       runOrder: 2,
     });
     return [buildAction];
@@ -77,21 +78,21 @@ export class WebsitePipeline extends Construct implements Pipelineable {
     const role = this.getPipelineRole();
     const deployProjectName = `${this.name}-deploy-project`;
     const deployProjectBuildSpec = deployWebsiteBuildSpec({
-      name: this.name,
       bucketName: this.bucketName,
       distributionId: this.distribution.distributionId,
+      name: this.name,
     });
     const deployProject = new PipelineProject(this, deployProjectName, {
+      buildSpec: BuildSpec.fromObject(deployProjectBuildSpec),
       projectName: deployProjectName,
       role,
-      buildSpec: BuildSpec.fromObject(deployProjectBuildSpec),
     });
 
     const deployActionName = `${this.name}-deploy-action`;
     const deployAction = new CodeBuildAction({
       actionName: deployActionName,
-      project: deployProject,
       input: inputArtifact,
+      project: deployProject,
       runOrder: 3,
     });
     return [deployAction];
@@ -100,9 +101,9 @@ export class WebsitePipeline extends Construct implements Pipelineable {
   protected exportValue(params: { exportName: string; value: string; description: string }) {
     const { exportName, value, description } = params;
     new CfnOutput(this, exportName, {
-      value,
       description,
       exportName,
+      value,
     });
   }
 

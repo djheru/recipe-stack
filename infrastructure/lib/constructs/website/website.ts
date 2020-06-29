@@ -9,29 +9,29 @@ import { Environment } from '../';
 import { WebsitePipeline } from './website-pipeline';
 
 export interface WebsiteProps {
-  name: string;
-  environmentName: Environment;
-  sourcePath: string;
-  hostedZone: IHostedZone;
   certificateDomainName: string;
+  environmentName: Environment;
+  hostedZone: IHostedZone;
+  name: string;
+  sourcePath: string;
 }
 
 export class Website extends WebsitePipeline {
-  private certificateDomainName: string;
-  private hostedZone: IHostedZone;
-  private frontEndCertificate: DnsValidatedCertificate;
-  private siteBucket: Bucket;
   private aRecord: ARecord;
+  private certificateDomainName: string;
+  private frontEndCertificate: DnsValidatedCertificate;
+  private hostedZone: IHostedZone;
+  private siteBucket: Bucket;
 
   constructor(scope: Construct, id: string, props: WebsiteProps) {
     super(scope, id, props);
-    const { name, environmentName, sourcePath, hostedZone, certificateDomainName } = props;
+    const { certificateDomainName, environmentName, hostedZone, name, sourcePath } = props;
 
-    this.name = name;
-    this.environmentName = environmentName;
-    this.sourcePath = sourcePath;
-    this.hostedZone = hostedZone;
     this.certificateDomainName = certificateDomainName;
+    this.environmentName = environmentName;
+    this.hostedZone = hostedZone;
+    this.name = name;
+    this.sourcePath = sourcePath;
 
     this.buildCertificate();
     this.buildBucket();
@@ -63,29 +63,29 @@ export class Website extends WebsitePipeline {
     const stackName = `${this.name}-bucket`;
     this.bucketName = `${this.certificateDomainName.replace(/\./g, '-')}-assets`;
     this.siteBucket = new Bucket(this, stackName, {
-      bucketName: this.bucketName,
-      websiteIndexDocument: 'index.html',
-      websiteErrorDocument: 'error.html',
-      publicReadAccess: true,
-      removalPolicy: RemovalPolicy.DESTROY,
       blockPublicAccess: {
         restrictPublicBuckets: false,
         blockPublicAcls: false,
         ignorePublicAcls: false,
         blockPublicPolicy: false,
       },
+      bucketName: this.bucketName,
+      publicReadAccess: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      websiteIndexDocument: 'index.html',
+      websiteErrorDocument: 'error.html',
     });
 
     this.exportValue({
+      description: `ARN for the ${this.bucketName} bucket`,
       exportName: `${stackName}-arn`,
       value: this.siteBucket.bucketArn,
-      description: `ARN for the ${this.bucketName} bucket`,
     });
 
     this.exportValue({
+      description: `Name for the ${this.bucketName} bucket`,
       exportName: `${stackName}-name`,
       value: this.siteBucket.bucketName,
-      description: `Name for the ${this.bucketName} bucket`,
     });
   }
 
@@ -95,8 +95,8 @@ export class Website extends WebsitePipeline {
       aliasConfiguration: {
         acmCertRef: this.frontEndCertificate.certificateArn,
         names: [this.certificateDomainName],
-        sslMethod: SSLMethod.SNI,
         securityPolicy: SecurityPolicyProtocol.TLS_V1_1_2016,
+        sslMethod: SSLMethod.SNI,
       },
       errorConfigurations: [
         {
@@ -128,28 +128,28 @@ export class Website extends WebsitePipeline {
     });
 
     this.exportValue({
+      description: `Distribution ID for ${distributionName}`,
       exportName: `${distributionName}-id`,
       value: this.distribution.distributionId,
-      description: `Distribution ID for ${distributionName}`,
     });
   }
 
   private bucketDeployment(websiteAssetPath: string) {
     const deploymentName = `${this.name}-bucket-deployment`;
     new BucketDeployment(this, deploymentName, {
-      sources: [Source.asset(websiteAssetPath)],
       destinationBucket: this.siteBucket,
       destinationKeyPrefix: 'live',
       distribution: this.distribution,
       distributionPaths: ['/index.html'],
+      sources: [Source.asset(websiteAssetPath)],
     });
   }
 
   private buildARecord() {
     this.aRecord = new ARecord(this, `${this.name}-a-record`, {
       recordName: this.certificateDomainName,
-      zone: this.hostedZone,
       target: AddressRecordTarget.fromAlias(new CloudFrontTarget(this.distribution)),
+      zone: this.hostedZone,
     });
   }
 }

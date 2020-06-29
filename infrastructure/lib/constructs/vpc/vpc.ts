@@ -3,8 +3,8 @@ import { CfnOutput, Construct, Tag } from '@aws-cdk/core';
 import { Environment } from '../';
 
 export interface PillarVpcProps extends VpcProps {
-  name: string;
   environmentName: Environment;
+  name: string;
 }
 
 export enum DefaultCidr {
@@ -18,15 +18,16 @@ export type ValidDefaultCidr = keyof typeof DefaultCidr;
 
 export class PillarVpc extends Construct {
   public instance: Vpc;
+  public isolatedSubnetIds: string[];
+  public privateSubnetIds: string[];
+  public publicSubnetIds: string[];
+
   private environmentName: Environment;
 
-  public isolatedSubnetIds: string[];
-  public publicSubnetIds: string[];
-  public privateSubnetIds: string[];
   constructor(scope: Construct, id: string, props: PillarVpcProps) {
     super(scope, id);
 
-    const { name, environmentName, ...restProps } = props;
+    const { environmentName, name, ...restProps } = props;
 
     this.environmentName = environmentName;
 
