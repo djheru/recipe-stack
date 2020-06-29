@@ -1,0 +1,57 @@
+version: '3.7'
+
+services:
+  # users:
+  #   container_name: users
+  #   build:
+  #     context: ./users
+  #     target: development
+  #   volumes:
+  #     - ./users:/usr/src/app
+  #     - /usr/src/app/node_modules
+  #   ports:
+  #     - 3030:3030
+  #   command: npm run dev
+  #   env_file:
+  #     - ./users/.env
+  #   networks:
+  #     - webnet
+  #   depends_on:
+  #     - postgres
+
+  recipe-service:
+    container_name: recipe-service
+    build:
+      context: ./recipe-service
+      target: development
+    volumes:
+      - ./recipe-service:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - 3000:3000
+    command: npm run start:dev
+    env_file:
+      - ./users/.env
+    networks:
+      - webnet
+    depends_on:
+      - postgres
+
+  postgres:
+    container_name: postgres
+    image: postgres:10.7
+    networks:
+      - webnet
+    environment:
+      POSTGRES_PASSWORD: ${USERS_DB_PASSWORD}
+      POSTGRES_USER: ${USERS_DB_USERNAME}
+      POSTGRES_DB: ${USERS_DB_DATABASE_NAME}
+      PG_DATA: /var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+networks:
+  webnet:
+volumes:
+  pgdata:

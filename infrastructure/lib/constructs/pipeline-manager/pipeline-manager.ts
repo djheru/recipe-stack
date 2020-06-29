@@ -1,9 +1,11 @@
+import { BuildSpec, LinuxBuildImage, PipelineProject } from '@aws-cdk/aws-codebuild';
 import { Repository } from '@aws-cdk/aws-codecommit';
 import { Artifact, IAction, IStage, Pipeline } from '@aws-cdk/aws-codepipeline';
-import { CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
-import { Role } from '@aws-cdk/aws-iam';
+import { CodeBuildAction, CodeCommitSourceAction } from '@aws-cdk/aws-codepipeline-actions';
+import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
 import { Construct, Tag } from '@aws-cdk/core';
-import { Environment } from '../pillar-stack';
+import { Environment } from '..';
+import { buildInfrastructureBuildSpec } from '../../utils/buildspec';
 
 export type GetPipelineActionsProps = {
   inputArtifact: Artifact;
@@ -11,51 +13,49 @@ export type GetPipelineActionsProps = {
 };
 
 export interface Pipelineable {
+  pipelineable: boolean;
   getBuildActions(buildArtifacts: GetPipelineActionsProps): IAction[];
   getDeployActions(deployArtifacts: GetPipelineActionsProps): IAction[];
 }
 
 export interface PipelineManagerProps {
-  name: string;
   environmentName: Environment;
   gitRepository: Repository;
+  name: string;
 }
 
 export class PipelineManager extends Construct {
-  public name: string;
-  public environmentName: Environment;
-  public gitRepository: Repository;
-
-  public role: Role;
-  public pipeline: Pipeline;
-
-  public sourceOutput: Artifact;
-
-  public sourceStage: IStage;
-  public buildStage: IStage;
-  public deployStage: IStage;
-
   private buildActions: Set<IAction> = new Set();
+  private buildStage: IStage;
   private deployActions: Set<IAction> = new Set();
+  private deployStage: IStage;
+  private environmentName: Environment;
+  private gitRepository: Repository;
+  private infrastructureStage: IStage;
+  private name: string;
+  private pipeline: Pipeline;
+  private sourceOutput: Artifact;
+  private sourceStage: IStage;
 
   constructor(scope: Construct, id: string, props: PipelineManagerProps) {
     super(scope, id);
-    const { name, environmentName, gitRepository } = props;
+    const { environmentName, gitRepository, name } = props;
 
-    this.name = name;
     this.environmentName = environmentName;
     this.gitRepository = gitRepository;
+    this.name = name;
     this.sourceOutput = new Artifact();
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `Pipeline for ${name} running in ${environmentName}`);
   }
 
   private buildPipeline() {
     const pipelineName = `${this.name}-pipeline`;
     this.pipeline = new Pipeline(this, pipelineName, {
       pipelineName,
+      restartExecutionOnUpdate: true,
     });
   }
 
@@ -63,42 +63,80 @@ export class PipelineManager extends Construct {
     const sourceActionName = `${this.name}-codecommit-source-action`;
     const sourceAction = new CodeCommitSourceAction({
       actionName: sourceActionName,
-      repository: this.gitRepository,
       branch: this.environmentName,
       output: this.sourceOutput,
+      repository: this.gitRepository,
       runOrder: 1,
     });
     this.sourceStage = this.pipeline.addStage({
-      stageName: `source-${this.environmentName}`,
       actions: [sourceAction],
+      stageName: `source-${this.environmentName}`,
+    });
+  }
+
+  private buildInfrastructureStage() {
+    const infrastructureProjectName = `${this.name}-infrastructure-project`;
+    const infrastructureProjectBuildSpec = buildInfrastructureBuildSpec({
+      name: this.name,
+      sourcePath: 'infrastructure',
+    });
+    const infrastructureRoleName = `${this.name}-infrastructure-code-build-role`;
+    const role = new Role(this, infrastructureRoleName, {
+      assumedBy: new ServicePrincipal('codebuild.amazonaws.com'),
+      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess')],
+      roleName: infrastructureRoleName,
+    });
+    const infrastructureBuildProject = new PipelineProject(this, infrastructureProjectName, {
+      buildSpec: BuildSpec.fromObject(infrastructureProjectBuildSpec),
+      environment: {
+        buildImage: LinuxBuildImage.fromCodeBuildImageId('aws/codebuild/amazonlinux2-x86_64-standard:3.0'),
+        privileged: true,
+      },
+      projectName: infrastructureProjectName,
+      role,
+    });
+    const infrastructureBuildActionName = `${this.name}-infrastructure-build-action`;
+    const infrastructureBuildAction = new CodeBuildAction({
+      actionName: infrastructureBuildActionName,
+      input: this.sourceOutput,
+      project: infrastructureBuildProject,
+      runOrder: 1,
+    });
+    this.infrastructureStage = this.pipeline.addStage({
+      actions: [infrastructureBuildAction],
+      placement: {
+        justAfter: this.sourceStage,
+      },
+      stageName: `infrastructure-${this.environmentName}`,
     });
   }
 
   private buildBuildStage() {
     const actions = Array.from(this.buildActions);
     this.buildStage = this.pipeline.addStage({
-      stageName: `build-${this.environmentName}`,
       actions,
       placement: {
-        justAfter: this.sourceStage,
+        justAfter: this.infrastructureStage,
       },
+      stageName: `build-${this.environmentName}`,
     });
   }
 
   private buildDeployStage() {
     const actions = Array.from(this.deployActions);
     this.deployStage = this.pipeline.addStage({
-      stageName: `deploy-${this.environmentName}`,
       actions,
       placement: {
         justAfter: this.buildStage,
       },
+      stageName: `deploy-${this.environmentName}`,
     });
   }
 
   private composePipeline() {
     this.buildPipeline();
     this.buildSourceStage();
+    this.buildInfrastructureStage();
     this.buildBuildStage();
     this.buildDeployStage();
   }

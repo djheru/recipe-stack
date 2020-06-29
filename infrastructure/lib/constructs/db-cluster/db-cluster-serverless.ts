@@ -1,51 +1,55 @@
 import { IConnectable, Port, SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
-import { CfnDBCluster, CfnDBSubnetGroup, DatabaseSecret } from '@aws-cdk/aws-rds';
+import { CfnDBCluster, CfnDBSubnetGroup } from '@aws-cdk/aws-rds';
+import { Secret } from '@aws-cdk/aws-secretsmanager';
 import { CfnOutput, Construct, Tag } from '@aws-cdk/core';
-import { Environment } from './../pillar-stack';
+import { Environment } from '..';
 
 export interface DbClusterServerlessProps {
-  name: string;
-  environmentName: Environment;
-  subnetIds: string[];
-  vpc: Vpc;
-  port?: number;
-  maxCapacity?: number;
-  minCapacity?: number;
-  secondsUntilAutoPause?: number;
   allowedConnections?: IConnectable[];
   engine?: string;
+  environmentName: Environment;
+  maxCapacity?: number;
+  minCapacity?: number;
+  name: string;
+  port?: number;
+  secondsUntilAutoPause?: number;
+  subnetIds: string[];
+  vpc: Vpc;
 }
 
 export class DbClusterServerless extends Construct {
-  public instance: CfnDBCluster;
-  public vpc: Vpc;
-  public clusterName: string;
-  public clusterIdentifier: string;
   public databaseName: string;
-  public engine: string;
-  public subnetGroup: CfnDBSubnetGroup;
-  public dbSecret: DatabaseSecret;
-  public securityGroup: SecurityGroup;
-  public secretArn: string;
-  public subnetIds: string[];
-  public port: number;
-  public minCapacity: number;
-  public maxCapacity: number;
-  public secondsUntilAutoPause: number;
+  public dbPasswordSecret: Secret;
+  public dbUsername: string;
+  public instance: CfnDBCluster;
+  public passwordSecretArn: string;
+  public usernameSecretArn: string;
+
+  private clusterIdentifier: string;
+  private clusterName: string;
   private connections: IConnectable[];
+  private engine: string;
+  private maxCapacity: number;
+  private minCapacity: number;
+  private port: number;
+  private secondsUntilAutoPause: number;
+  private securityGroup: SecurityGroup;
+  private subnetGroup: CfnDBSubnetGroup;
+  private subnetIds: string[];
+  private vpc: Vpc;
 
   constructor(scope: Construct, id: string, props: DbClusterServerlessProps) {
     super(scope, id);
-    const { name, environmentName, subnetIds, vpc, ...restProps } = props;
+    const { environmentName, name, subnetIds, vpc, ...restProps } = props;
 
-    this.vpc = vpc;
-    this.clusterName = name;
     this.clusterIdentifier = `${name}-cluster`;
+    this.clusterName = name;
     this.connections = restProps.allowedConnections || [];
     this.databaseName = this.clusterName.replace(/-/g, '_');
     this.engine = restProps.engine || 'aurora-postgresql';
-    this.subnetIds = subnetIds;
     this.port = restProps.port || 5432;
+    this.subnetIds = subnetIds;
+    this.vpc = vpc;
 
     this.maxCapacity = restProps.maxCapacity || 4;
     this.minCapacity = restProps.minCapacity || 2;
@@ -55,26 +59,45 @@ export class DbClusterServerless extends Construct {
 
     this.secondsUntilAutoPause = restProps.secondsUntilAutoPause || 600;
 
-    this.buildSecret();
+    this.buildCredentials();
     this.buildSubnetGroup();
     this.buildSecurityGroup();
     this.buildInstance();
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `Serverless RDS cluster for ${name} running in ${environmentName}`);
   }
 
-  private buildSecret() {
-    const secretName = `${this.clusterName}-secret`;
-    this.dbSecret = new DatabaseSecret(this, secretName, {
-      username: `${this.databaseName}_admin`,
+  private buildCredentials() {
+    this.dbUsername = `${this.databaseName}_admin`;
+    const usernameName = `${this.clusterName}-username`;
+
+    const passwordSecretName = `${this.clusterName}-password-secret`;
+    this.dbPasswordSecret = new Secret(this, passwordSecretName, {
+      generateSecretString: {
+        excludeCharacters: '/@" ',
+        excludePunctuation: true,
+        passwordLength: 16,
+      },
+      secretName: passwordSecretName,
     });
-    this.secretArn = this.dbSecret.secretArn;
+    this.passwordSecretArn = this.dbPasswordSecret.secretArn;
+
     this.exportValue({
-      exportName: `${secretName}-arn`,
-      value: this.secretArn,
-      description: `DB Secret ARN for ${secretName}`,
+      exportName: `${usernameName}`,
+      value: this.dbUsername,
+      description: `DB Username Secret for ${usernameName}`,
+    });
+    this.exportValue({
+      exportName: `${passwordSecretName}-arn`,
+      value: this.passwordSecretArn,
+      description: `DB Password Secret ARN for ${passwordSecretName}`,
+    });
+    this.exportValue({
+      exportName: `${passwordSecretName}-val`,
+      value: this.dbPasswordSecret.secretValue.toString(),
+      description: `DB Password Secret value for ${passwordSecretName}`,
     });
   }
 
@@ -90,9 +113,9 @@ export class DbClusterServerless extends Construct {
   private buildSecurityGroup() {
     const securityGroupName = `${this.clusterName}-sg`;
     this.securityGroup = new SecurityGroup(this, securityGroupName, {
-      vpc: this.vpc,
       description: `Security group to control access for ${this.clusterName}`,
       securityGroupName,
+      vpc: this.vpc,
     });
     this.allowConnections();
   }
@@ -105,8 +128,8 @@ export class DbClusterServerless extends Construct {
       enableHttpEndpoint: true,
       engine: this.engine,
       engineMode: 'serverless',
-      masterUsername: this.dbSecret.secretValueFromJson('username').toString(),
-      masterUserPassword: this.dbSecret.secretValueFromJson('password').toString(),
+      masterUsername: this.dbUsername,
+      masterUserPassword: this.dbPasswordSecret.secretValue.toString(),
       port: this.port,
       scalingConfiguration: {
         autoPause: true,
@@ -119,7 +142,6 @@ export class DbClusterServerless extends Construct {
     };
 
     this.instance = new CfnDBCluster(this, this.clusterName, params);
-
     this.instance.addDependsOn(this.subnetGroup);
   }
 
@@ -134,7 +156,11 @@ export class DbClusterServerless extends Construct {
 
   private allowConnections() {
     this.connections.forEach((connection) => {
-      this.securityGroup.connections.allowFrom(connection, Port.tcp(this.port));
+      this.allowConnection(connection);
     });
+  }
+
+  public allowConnection(connection: IConnectable) {
+    this.securityGroup.connections.allowFrom(connection, Port.tcp(this.port));
   }
 }

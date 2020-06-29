@@ -1,30 +1,33 @@
 import { GatewayVpcEndpointAwsService, SubnetType, Vpc, VpcProps } from '@aws-cdk/aws-ec2';
 import { CfnOutput, Construct, Tag } from '@aws-cdk/core';
-import { Environment } from '../pillar-stack';
+import { Environment } from '../';
 
-export interface VpcConstructProps extends VpcProps {
-  name: string;
+export interface PillarVpcProps extends VpcProps {
   environmentName: Environment;
+  name: string;
 }
 
 export enum DefaultCidr {
   demo = '10.100.0.0/16',
   dev = '10.110.0.0/16',
   prod = '10.120.0.0/16',
+  prototype = '10.130.0.0/16',
 }
 
 export type ValidDefaultCidr = keyof typeof DefaultCidr;
 
 export class PillarVpc extends Construct {
   public instance: Vpc;
-  public environmentName: Environment;
   public isolatedSubnetIds: string[];
-  public publicSubnetIds: string[];
   public privateSubnetIds: string[];
-  constructor(scope: Construct, id: string, props: VpcConstructProps) {
+  public publicSubnetIds: string[];
+
+  private environmentName: Environment;
+
+  constructor(scope: Construct, id: string, props: PillarVpcProps) {
     super(scope, id);
 
-    const { name, environmentName, ...restProps } = props;
+    const { environmentName, name, ...restProps } = props;
 
     this.environmentName = environmentName;
 
@@ -71,7 +74,7 @@ export class PillarVpc extends Construct {
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `VPC for ${name} running in ${environmentName}`);
   }
 
   groupSubnets() {

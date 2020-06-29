@@ -1,46 +1,38 @@
 import { DnsValidatedCertificate } from '@aws-cdk/aws-certificatemanager';
 import { CloudFrontWebDistribution, SecurityPolicyProtocol, SSLMethod } from '@aws-cdk/aws-cloudfront';
-import { AddressRecordTarget, ARecord, HostedZone, IHostedZone } from '@aws-cdk/aws-route53';
+import { AddressRecordTarget, ARecord, IHostedZone } from '@aws-cdk/aws-route53';
 import { CloudFrontTarget } from '@aws-cdk/aws-route53-targets';
 import { Bucket } from '@aws-cdk/aws-s3';
 import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
 import { Construct, RemovalPolicy, Tag } from '@aws-cdk/core';
-import { Environment } from '../pillar-stack';
-import { WebsitePipeline } from './websitePipeline';
+import { Environment } from '../';
+import { WebsitePipeline } from './website-pipeline';
 
 export interface WebsiteProps {
-  name: string;
-  environmentName: Environment;
-  sourcePath: string;
-  hostedZoneDomainName: string;
   certificateDomainName: string;
+  environmentName: Environment;
+  hostedZone: IHostedZone;
+  name: string;
+  sourcePath: string;
 }
 
 export class Website extends WebsitePipeline {
-  public name: string;
-  public environmentName: Environment;
-  public sourcePath: string;
-  public hostedZoneDomainName: string;
-  public certificateDomainName: string;
-  public hostedZone: IHostedZone;
-  public frontEndCertificate: DnsValidatedCertificate;
-  public bucketName: string;
-  public siteBucket: Bucket;
-  public distribution: CloudFrontWebDistribution;
-  public deployment: BucketDeployment;
-  public aRecord: ARecord;
+  private aRecord: ARecord;
+  private certificateDomainName: string;
+  private frontEndCertificate: DnsValidatedCertificate;
+  private hostedZone: IHostedZone;
+  private siteBucket: Bucket;
 
   constructor(scope: Construct, id: string, props: WebsiteProps) {
     super(scope, id, props);
-    const { name, environmentName, sourcePath, hostedZoneDomainName, certificateDomainName } = props;
+    const { certificateDomainName, environmentName, hostedZone, name, sourcePath } = props;
 
-    this.name = name;
-    this.environmentName = environmentName;
-    this.sourcePath = sourcePath;
-    this.hostedZoneDomainName = hostedZoneDomainName;
     this.certificateDomainName = certificateDomainName;
+    this.environmentName = environmentName;
+    this.hostedZone = hostedZone;
+    this.name = name;
+    this.sourcePath = sourcePath;
 
-    this.hostedZoneLookup();
     this.buildCertificate();
     this.buildBucket();
     this.buildCloudFrontDistribution();
@@ -55,14 +47,7 @@ export class Website extends WebsitePipeline {
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
-  }
-
-  private hostedZoneLookup() {
-    this.hostedZone = HostedZone.fromLookup(this, this.node.tryGetContext('domain'), {
-      domainName: this.hostedZoneDomainName,
-      privateZone: false,
-    });
+    Tag.add(this, 'description', `CloudFront website for ${name} running in ${environmentName}`);
   }
 
   private buildCertificate() {
@@ -78,29 +63,29 @@ export class Website extends WebsitePipeline {
     const stackName = `${this.name}-bucket`;
     this.bucketName = `${this.certificateDomainName.replace(/\./g, '-')}-assets`;
     this.siteBucket = new Bucket(this, stackName, {
-      bucketName: this.bucketName,
-      websiteIndexDocument: 'index.html',
-      websiteErrorDocument: 'error.html',
-      publicReadAccess: true,
-      removalPolicy: RemovalPolicy.DESTROY,
       blockPublicAccess: {
         restrictPublicBuckets: false,
         blockPublicAcls: false,
         ignorePublicAcls: false,
         blockPublicPolicy: false,
       },
+      bucketName: this.bucketName,
+      publicReadAccess: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      websiteIndexDocument: 'index.html',
+      websiteErrorDocument: 'error.html',
     });
 
     this.exportValue({
+      description: `ARN for the ${this.bucketName} bucket`,
       exportName: `${stackName}-arn`,
       value: this.siteBucket.bucketArn,
-      description: `ARN for the ${this.bucketName} bucket`,
     });
 
     this.exportValue({
+      description: `Name for the ${this.bucketName} bucket`,
       exportName: `${stackName}-name`,
       value: this.siteBucket.bucketName,
-      description: `Name for the ${this.bucketName} bucket`,
     });
   }
 
@@ -110,8 +95,8 @@ export class Website extends WebsitePipeline {
       aliasConfiguration: {
         acmCertRef: this.frontEndCertificate.certificateArn,
         names: [this.certificateDomainName],
-        sslMethod: SSLMethod.SNI,
         securityPolicy: SecurityPolicyProtocol.TLS_V1_1_2016,
+        sslMethod: SSLMethod.SNI,
       },
       errorConfigurations: [
         {
@@ -143,28 +128,28 @@ export class Website extends WebsitePipeline {
     });
 
     this.exportValue({
+      description: `Distribution ID for ${distributionName}`,
       exportName: `${distributionName}-id`,
       value: this.distribution.distributionId,
-      description: `Distribution ID for ${distributionName}`,
     });
   }
 
   private bucketDeployment(websiteAssetPath: string) {
     const deploymentName = `${this.name}-bucket-deployment`;
-    const deployment = new BucketDeployment(this, deploymentName, {
-      sources: [Source.asset(websiteAssetPath)],
+    new BucketDeployment(this, deploymentName, {
       destinationBucket: this.siteBucket,
       destinationKeyPrefix: 'live',
       distribution: this.distribution,
       distributionPaths: ['/index.html'],
+      sources: [Source.asset(websiteAssetPath)],
     });
   }
 
   private buildARecord() {
     this.aRecord = new ARecord(this, `${this.name}-a-record`, {
       recordName: this.certificateDomainName,
-      zone: this.hostedZone,
       target: AddressRecordTarget.fromAlias(new CloudFrontTarget(this.distribution)),
+      zone: this.hostedZone,
     });
   }
 }

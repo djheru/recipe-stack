@@ -8,16 +8,17 @@ import {
   SubnetType,
 } from '@aws-cdk/aws-ec2';
 import { Construct, Tag } from '@aws-cdk/core';
-import { Environment } from '../pillar-stack';
+import { Environment } from '..';
 
-export interface BastionHostInstanceConstructProps extends BastionHostLinuxProps {
-  name: string;
+export interface BastionHostInstanceProps extends BastionHostLinuxProps {
   environmentName: Environment;
+  name: string;
 }
 
 export class BastionHostInstance extends Construct {
   public instance: BastionHostLinux;
-  constructor(scope: Construct, id: string, props: BastionHostInstanceConstructProps) {
+
+  constructor(scope: Construct, id: string, props: BastionHostInstanceProps) {
     super(scope, id);
 
     // Connection instructions: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.
@@ -30,7 +31,7 @@ export class BastionHostInstance extends Construct {
     ssh-keygen -t rsa -f ~/.ssh/cdk_key
 
     # Authorize the user
-    export INSTANCE_ID="i-00ae3d4064dbf46c7" && \
+    export INSTANCE_ID="i-066eb846c1a74401d" && \
     aws ec2-instance-connect send-ssh-public-key \
       --region us-west-2 \
       --instance-id $INSTANCE_ID \
@@ -41,15 +42,11 @@ export class BastionHostInstance extends Construct {
     # Connect via SSH (within 60 seconds)
     export INSTANCE_HOST="ec2-35-166-38-215.us-west-2.compute.amazonaws.com" && \
     ssh -i ~/.ssh/cdk_key ec2-user@$INSTANCE_HOST
-
-    ssh -oStrictHostKeyChecking=no \
-      -i ~/.ssh/cdk_key -N \
-      -L 5432:pillar-dbcluster-dev-db-cluster.cluster-cjab4zf5abb0.us-west-2.rds.amazonaws.com:5432 \
-      ec2-user@$INSTANCE_HOST
     
     # If you don't connect within 60 sec, you get: "Permission denied (publickey,gssapi-keyex,gssapi-with-mic)."
     */
-    const { name, environmentName, vpc, ...restProps } = props;
+    const { environmentName, name, vpc, ...restProps } = props;
+
     const instanceName = `${name}-instance`;
 
     const defaultProps = {
@@ -69,6 +66,6 @@ export class BastionHostInstance extends Construct {
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `Bastion host for ${name} running in ${environmentName}`);
   }
 }

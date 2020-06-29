@@ -1,5 +1,10 @@
 {
-  "availability-zones:account=501851812389:region=us-west-2": ["us-west-2a", "us-west-2b", "us-west-2c", "us-west-2d"],
+  "availability-zones:account=501851812389:region=us-west-2": [
+    "us-west-2a",
+    "us-west-2b",
+    "us-west-2c",
+    "us-west-2d"
+  ],
   "hosted-zone:account=501851812389:domainName=di-metal.net:privateZone=false:region=us-west-2": {
     "Id": "/hostedzone/Z3FHKIQ4S85KXS",
     "Name": "di-metal.net."

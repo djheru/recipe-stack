@@ -13,8 +13,8 @@
       "path": "websites/recipe-web"
     },
     {
-      "name": "users-service",
-      "path": "services/users"
+      "name": "recipe-service",
+      "path": "services/recipe-service"
     }
   ]
 }
