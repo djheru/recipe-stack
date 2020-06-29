@@ -16,7 +16,7 @@ export const buildInfrastructureBuildSpec = ({ name, sourcePath }: { name: strin
     build: { commands: ['npm run build'] },
     post_build: {
       commands: [
-        'Updating the CDK infrastructure stack...',
+        'echo Updating the CDK infrastructure stack...',
         'npm run cdk -- diff',
         'npm run deploy -- --require-approval never',
         'echo Build completed at `date`',
