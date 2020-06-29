@@ -8,7 +8,7 @@ export const buildInfrastructureBuildSpec = ({ name, sourcePath }: { name: strin
       commands: [
         'echo Build started at `date`',
         `echo Beginning build operations for "${name}"`,
-        'echo Building the CDK infrastructure stack...',
+        'echo Building the AWS infrastructure stack...',
         `cd ${sourcePath}`,
         'npm install',
       ],
