@@ -21,54 +21,52 @@ import { CfnOutput, Construct, Duration, RemovalPolicy, Tag } from '@aws-cdk/cor
 import { Environment } from '..';
 
 export interface DbClusterProps {
-  name: string;
-  environmentName: Environment;
-  vpc: Vpc;
+  allowedConnections?: IConnectable[];
   backup?: BackupProps;
   clusterIdentifier?: string;
   defaultDatabaseName?: string;
   engine?: DatabaseClusterEngine;
   engineVersion?: string;
+  environmentName: Environment;
   instanceIdentifierBase?: string;
   instanceProps?: InstanceProps;
   instances?: number;
   masterUser?: Login;
+  name: string;
   parameterGroup?: IParameterGroup;
   port?: number;
   removalPolicy?: RemovalPolicy;
   storageEncrypted?: boolean;
-  allowedConnections?: IConnectable[];
+  vpc: Vpc;
 }
-
-// const usersDbCluster = new DbCluster(this, 'usersDb', {
-//   name: 'users',
-//   environmentName: this.environmentName,
-//   vpc: pillarVpc.instance,
-//   allowedConnections: [bastionHost.instance],
-// });
 
 export class DbCluster extends Construct {
   public instance: DatabaseCluster;
   public dbSecret: DatabaseSecret;
   public secretArn: string;
+
   private connections: IConnectable[];
   private port: number;
+
   constructor(scope: Construct, id: string, props: DbClusterProps) {
     super(scope, id);
     const { name, environmentName, vpc, ...restProps } = props;
+
     const clusterName = `pillar-${name}-${environmentName}-db`.toLowerCase();
     const dbName = clusterName.replace(/-/g, '_');
     const clusterId = `${clusterName}-cluster`;
     const parameterGroup = ParameterGroup.fromParameterGroupName(this, 'ParameterGroup', 'default.aurora-postgresql10');
+
     const secretName = `${clusterName}-secret`;
     this.dbSecret = new DatabaseSecret(this, secretName, {
       username: `${dbName}_admin`,
     });
     this.secretArn = this.dbSecret.secretArn;
+
     this.exportValue({
+      description: `DB Secret ARN for ${secretName}`,
       exportName: `${secretName}-arn`,
       value: this.secretArn,
-      description: `DB Secret ARN for ${secretName}`,
     });
 
     const defaultProps = {
@@ -107,15 +105,15 @@ export class DbCluster extends Construct {
 
     Tag.add(this, 'name', name);
     Tag.add(this, 'environmentName', environmentName);
-    Tag.add(this, 'description', `Stack for ${name} running in the ${environmentName} environment`);
+    Tag.add(this, 'description', `RDS cluster for ${name} running in ${environmentName}`);
   }
 
-  private exportValue(params: { exportName: string; value: string; description: string }) {
-    const { exportName, value, description } = params;
+  private exportValue(params: { description: string; exportName: string; value: string }) {
+    const { exportName, description, value } = params;
     new CfnOutput(this, exportName, {
-      value,
       description,
       exportName,
+      value,
     });
   }
 

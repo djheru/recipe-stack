@@ -55,7 +55,7 @@ export class Service extends ServicePipeline {
     this.routePath = routePath;
     Service.CLUSTER = cluster;
 
-    this.buildContainerRepository();
+    this.buildImageRepository();
     this.buildFargateService();
     this.configureServiceAutoscaling();
 
@@ -64,7 +64,7 @@ export class Service extends ServicePipeline {
     Tag.add(this, 'description', `ECS service for ${name} running in ${environmentName}`);
   }
 
-  private buildContainerRepository() {
+  private buildImageRepository() {
     const repositoryName = `${this.name}-ecr-repository`;
     this.repository = new Repository(this, repositoryName, {
       repositoryName: this.name,

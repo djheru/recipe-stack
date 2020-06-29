@@ -3,8 +3,8 @@ import { Construct, RemovalPolicy, Tag } from '@aws-cdk/core';
 import { Environment } from '..';
 
 export interface AssetBucketProps extends BucketProps {
-  name: string;
   environmentName: Environment;
+  name: string;
 }
 
 export class AssetBucket extends Construct {
@@ -12,16 +12,16 @@ export class AssetBucket extends Construct {
 
   constructor(scope: Construct, id: string, props: AssetBucketProps) {
     super(scope, id);
-    const { name, environmentName, ...restProps } = props;
+    const { environmentName, name, ...restProps } = props;
 
     const bucketId = `${name}-bucket`;
     const defaults = {
-      versioned: false,
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       bucketName: bucketId,
       encryption: BucketEncryption.KMS_MANAGED,
       publicReadAccess: false,
-      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       removalPolicy: RemovalPolicy.DESTROY,
+      versioned: false,
     };
     this.instance = new Bucket(this, bucketId, {
       ...defaults,
