@@ -1,6 +1,7 @@
 import { BuildSpec, LinuxBuildImage, PipelineProject } from '@aws-cdk/aws-codebuild';
 import { Artifact } from '@aws-cdk/aws-codepipeline';
 import { CodeBuildAction, EcsDeployAction } from '@aws-cdk/aws-codepipeline-actions';
+import { Repository } from '@aws-cdk/aws-ecr';
 import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns';
 import { ManagedPolicy, Role, ServicePrincipal } from '@aws-cdk/aws-iam';
 import { Construct } from '@aws-cdk/core';
@@ -21,6 +22,7 @@ export class ServicePipeline extends Construct implements Pipelineable {
   public fargateService: ApplicationLoadBalancedFargateService;
   public name: string;
   public pipelineRole: Role;
+  public repository: Repository;
   public repositoryUri: string;
   public sourcePath: string;
 

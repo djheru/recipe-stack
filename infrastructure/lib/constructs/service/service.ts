@@ -7,7 +7,6 @@ import {
 } from '@aws-cdk/aws-ecs-patterns';
 import { IHostedZone } from '@aws-cdk/aws-route53';
 import { Construct, Duration, RemovalPolicy, Tag } from '@aws-cdk/core';
-import * as path from 'path';
 import { ServicePipeline, ServicePipelineProps } from './service-pipeline';
 
 type EnvironmentMap = { [key: string]: any };
@@ -59,6 +58,7 @@ export class Service extends ServicePipeline {
 
     Service.CLUSTER = cluster;
 
+    this.buildImageRepository();
     this.buildFargateService();
     this.configureServiceAutoscaling({
       maxCapacity: 4,
@@ -72,13 +72,24 @@ export class Service extends ServicePipeline {
     Tag.add(this, 'description', `ECS service for ${name} running in ${environmentName}`);
   }
 
+  private buildImageRepository() {
+    const repositoryName = `${this.name}-ecr-repository`;
+    this.repository = new Repository(this, repositoryName, {
+      removalPolicy: RemovalPolicy.DESTROY,
+      repositoryName: this.name,
+    });
+    this.repository.addLifecycleRule({ tagPrefixList: ['prod'], maxImageCount: 999 });
+    this.repository.addLifecycleRule({ maxImageAge: Duration.days(90) });
+  }
+
   private buildTaskImageOptions(environment?: EnvironmentMap, secrets?: SecretsMap) {
     const taskImageOptions: any = {
       containerName: this.name,
       containerPort: 3000,
-      image: ContainerImage.fromAsset(path.join(__dirname, '../../../..', this.sourcePath), {
-        repositoryName: this.name
-      }),
+      image: ContainerImage.fromEcrRepository(this.repository, 'latest'),
+      // image: ContainerImage.fromAsset(path.join(__dirname, '../../../..', this.sourcePath), {
+      //   repositoryName: this.name,
+      // }),
     };
     if (environment) {
       taskImageOptions.environment = environment;
