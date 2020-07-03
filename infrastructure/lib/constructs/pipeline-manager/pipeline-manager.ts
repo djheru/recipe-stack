@@ -76,9 +76,11 @@ export class PipelineManager extends Construct {
 
   private buildInfrastructureStage() {
     const infrastructureProjectName = `${this.name}-infrastructure-project`;
+    const stackName = `recipe-stack-${this.environmentName}`;
     const infrastructureProjectBuildSpec = buildInfrastructureBuildSpec({
       name: this.name,
       sourcePath: 'infrastructure',
+      stackName,
     });
     const infrastructureRoleName = `${this.name}-infrastructure-code-build-role`;
     const role = new Role(this, infrastructureRoleName, {

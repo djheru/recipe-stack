@@ -1,7 +1,15 @@
 const getS3VersionPath = (bucketName: string) => `${bucketName}/versions/${Date.now()}`;
 const s3GrantsUri = 'http://acs.amazonaws.com/groups/global/AllUsers';
 
-export const buildInfrastructureBuildSpec = ({ name, sourcePath }: { name: string; sourcePath: string }) => ({
+export const buildInfrastructureBuildSpec = ({
+  name,
+  sourcePath,
+  stackName,
+}: {
+  name: string;
+  sourcePath: string;
+  stackName: string;
+}) => ({
   version: '0.2',
   phases: {
     install: {
@@ -17,7 +25,7 @@ export const buildInfrastructureBuildSpec = ({ name, sourcePath }: { name: strin
     post_build: {
       commands: [
         'echo Updating the CDK infrastructure stack...',
-        'npm run deploy -- --require-approval never',
+        `npm run deploy -- --require-approval never ${stackName}`,
         'echo Build completed at `date`',
       ],
     },
