@@ -16,8 +16,14 @@ const pillarStackProps: StackProps = {
 };
 
 // Each instance of the stack represents a new full environment
-const devStack = new PillarStack(app, 'recipe-stack', {
+const devStack = new PillarStack(app, 'recipe-stack-dev', {
   ...pillarStackProps,
   environmentName: 'dev',
+  hostedZoneDomainName: 'di-metal.net',
+});
+
+const prodStack = new PillarStack(app, 'recipe-stack-prod', {
+  ...pillarStackProps,
+  environmentName: 'prod',
   hostedZoneDomainName: 'di-metal.net',
 });

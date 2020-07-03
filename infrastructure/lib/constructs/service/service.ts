@@ -7,6 +7,7 @@ import {
 } from '@aws-cdk/aws-ecs-patterns';
 import { IHostedZone } from '@aws-cdk/aws-route53';
 import { Construct, Duration, RemovalPolicy, Tag } from '@aws-cdk/core';
+import * as path from 'path';
 import { ServicePipeline, ServicePipelineProps } from './service-pipeline';
 
 type EnvironmentMap = { [key: string]: any };
@@ -26,6 +27,7 @@ export class Service extends ServicePipeline {
   private environment?: EnvironmentMap;
   private hostedZone: IHostedZone;
   private routePath: string;
+  private scope: Construct;
   private secrets?: SecretsMap;
   private vpc: IVpc;
 
@@ -51,6 +53,7 @@ export class Service extends ServicePipeline {
     this.environment = environment;
     this.hostedZone = hostedZone;
     this.routePath = routePath;
+    this.scope = scope;
     this.secrets = secrets;
     this.vpc = vpc;
 
@@ -84,7 +87,7 @@ export class Service extends ServicePipeline {
     const taskImageOptions: any = {
       containerName: this.name,
       containerPort: 3000,
-      image: ContainerImage.fromEcrRepository(this.repository, 'latest'),
+      image: ContainerImage.fromAsset(path.join(__dirname, '../../../..', this.sourcePath)),
     };
     if (environment) {
       taskImageOptions.environment = environment;
