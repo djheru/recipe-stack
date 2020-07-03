@@ -5,7 +5,7 @@ import { AppModule } from './app.module';
 
 dotenv.config();
 const { ADDRESS = '0.0.0.0', NAME, PORT = 9000 } = process.env;
-console.log('Starting Nest.js application');
+console.log('Starting recipe-service application');
 async function bootstrap() {
   const logger = new Logger('AppBootstrap');
   const app = await NestFactory.create(AppModule);
