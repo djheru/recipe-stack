@@ -59,7 +59,7 @@ export const buildServiceBuildSpec = ({
                'echo BUILD_TAG: $BUILD_TAG',
                'echo Tagging the Docker image...',
                `docker build -t ${name} .`,
-               `docker tag ${name}:latest ${imageName}:$BUILD_TAG`,
+               `docker tag ${name}:latest ${imageName}:latest`,
              ],
            },
            post_build: {
