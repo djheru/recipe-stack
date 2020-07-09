@@ -42,7 +42,7 @@ export class DbClusterServerless extends Construct {
     super(scope, id);
     const { environmentName, name, subnetIds, vpc, ...restProps } = props;
 
-    this.clusterIdentifier = `${name}-cluster`;
+    this.clusterIdentifier = `${name}-id`;
     this.clusterName = name;
     this.connections = restProps.allowedConnections || [];
     this.databaseName = this.clusterName.replace(/-/g, '_');

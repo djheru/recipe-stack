@@ -22,6 +22,7 @@ export interface ServiceProps extends ServicePipelineProps {
 }
 
 export class Service extends ServicePipeline {
+  private cluster: Cluster;
   private domainName: string;
   private environment?: EnvironmentMap;
   private hostedZone: IHostedZone;
@@ -29,8 +30,6 @@ export class Service extends ServicePipeline {
   private scope: Construct;
   private secrets?: SecretsMap;
   private vpc: IVpc;
-
-  private static CLUSTER: Cluster | undefined;
 
   constructor(scope: Construct, id: string, props: ServiceProps) {
     const {
@@ -56,7 +55,11 @@ export class Service extends ServicePipeline {
     this.secrets = secrets;
     this.vpc = vpc;
 
-    Service.CLUSTER = cluster;
+    if (cluster) {
+      this.cluster = cluster;
+    } else {
+      this.buildCluster();
+    }
 
     this.buildImageRepository();
     this.buildFargateService();
@@ -82,6 +85,18 @@ export class Service extends ServicePipeline {
     this.repository.addLifecycleRule({ maxImageAge: Duration.days(90) });
   }
 
+  private buildCluster() {
+    const clusterName = `${this.name}-cluster`;
+    this.cluster = new Cluster(this, clusterName, {
+      clusterName,
+      containerInsights: true,
+      defaultCloudMapNamespace: {
+        name: this.name,
+      },
+      vpc: this.vpc,
+    });
+  }
+
   private buildTaskImageOptions(environment?: EnvironmentMap, secrets?: SecretsMap) {
     const taskImageOptions: any = {
       containerName: this.name,
@@ -105,7 +120,7 @@ export class Service extends ServicePipeline {
 
     let fargateParams: ApplicationLoadBalancedFargateServiceProps = {
       cpu: 512,
-      cluster: this.getCluster(),
+      cluster: this.cluster,
       desiredCount: 1,
       memoryLimitMiB: 1024,
       serviceName: this.name,
@@ -146,22 +161,5 @@ export class Service extends ServicePipeline {
     scalableTarget.scaleOnMemoryUtilization('MemoryScaling', {
       targetUtilizationPercent: ramTargetUtilizationPercent,
     });
-  }
-
-  private getCluster() {
-    if (!Service.CLUSTER) {
-      const clusterName = `${this.name}-cluster`;
-      Service.CLUSTER = new Cluster(this, clusterName, {
-        clusterName,
-        containerInsights: true,
-        defaultCloudMapNamespace: {
-          name: this.name,
-        },
-        vpc: this.vpc,
-      });
-    } else {
-      console.log('using existing cluster');
-    }
-    return Service.CLUSTER;
   }
 }

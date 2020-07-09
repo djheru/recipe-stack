@@ -17,11 +17,13 @@ import { Pipelineable } from './constructs/pipeline-manager';
 export interface PillarStackProps extends StackProps {
   environmentName: Environment;
   hostedZoneDomainName: string;
+  name: string;
 }
 
 export class PillarStack extends Stack {
   public environmentName: Environment;
   public id: string;
+  public name: string;
   public stackResources: Construct[];
 
   private assetBucket: AssetBucket;
@@ -38,10 +40,11 @@ export class PillarStack extends Stack {
   constructor(scope: Construct, id: string, props: PillarStackProps) {
     super(scope, id, props);
 
-    const { environmentName, hostedZoneDomainName } = props;
+    const { environmentName, hostedZoneDomainName, name } = props;
 
     this.environmentName = environmentName;
     this.id = id;
+    this.name = name;
     this.hostedZoneDomainName = hostedZoneDomainName;
 
     this.buildStackResources();
@@ -55,8 +58,8 @@ export class PillarStack extends Stack {
     this.buildBastionHost();
     this.buildAssetBucket();
     this.buildDbCluster();
-    this.buildWebsite();
-    this.buildService();
+    this.buildRecipesWebsite();
+    this.buildRecipesService();
 
     this.stackResources = [
       this.assetBucket,
@@ -79,80 +82,81 @@ export class PillarStack extends Stack {
   }
 
   private buildGitRepo() {
-    this.gitRepository = new Repository(this, `${this.id}-repository`, {
+    const repositoryId = `${this.id}-repository`;
+    this.gitRepository = new Repository(this, repositoryId, {
       description: `Git repository for ${this.id}`,
       repositoryName: this.id,
     });
   }
 
   private buildPipelineManager() {
-    const pipelineManagerName = `${this.environmentName}-pipeline-manager`;
-    this.pipelineManager = new PipelineManager(this, pipelineManagerName, {
+    const pipelineManagerId = `${this.id}-pipeline-manager`;
+    this.pipelineManager = new PipelineManager(this, pipelineManagerId, {
       environmentName: this.environmentName,
       gitRepository: this.gitRepository,
-      name: pipelineManagerName,
+      name: this.id,
     });
   }
 
   private buildVpc() {
-    const vpcName = `${this.environmentName}-vpc`;
-    this.pillarVpc = new PillarVpc(this, vpcName, {
+    const vpcId = `${this.id}-vpc`;
+    this.pillarVpc = new PillarVpc(this, vpcId, {
       environmentName: this.environmentName,
-      name: vpcName,
+      name: vpcId,
     });
   }
 
   private buildBastionHost() {
-    const bastionHostName = `${this.environmentName}-bastion-host`;
-    this.bastionHost = new BastionHostInstance(this, bastionHostName, {
+    const bastionHostId = `${this.id}-bastion-host`;
+    this.bastionHost = new BastionHostInstance(this, bastionHostId, {
       environmentName: this.environmentName,
-      name: bastionHostName,
+      name: bastionHostId,
       vpc: this.pillarVpc.instance,
     });
   }
 
   private buildAssetBucket() {
-    const assetBucketName = `${this.environmentName}-${this.id}-assets`;
-    this.assetBucket = new AssetBucket(this, assetBucketName, {
+    const assetBucketId = `${this.id}-assets`;
+    this.assetBucket = new AssetBucket(this, assetBucketId, {
       environmentName: this.environmentName,
-      name: assetBucketName,
+      name: assetBucketId,
     });
   }
 
   private buildDbCluster() {
-    const recipesDbClusterName = `${this.environmentName}-recipes-db`;
-    this.recipesDbCluster = new DbClusterServerless(this, recipesDbClusterName, {
+    const recipesDbClusterId = `${this.id}-db-cluster`;
+    this.recipesDbCluster = new DbClusterServerless(this, recipesDbClusterId, {
       allowedConnections: [this.bastionHost.instance],
       environmentName: this.environmentName,
-      name: recipesDbClusterName,
+      name: recipesDbClusterId,
       subnetIds: this.pillarVpc.isolatedSubnetIds,
       vpc: this.pillarVpc.instance,
     });
   }
 
-  private buildWebsite() {
+  private buildRecipesWebsite() {
     const certificateDomainName =
       this.environmentName === 'prod'
-        ? `web.${this.hostedZoneDomainName}`
-        : `${this.environmentName}.web.${this.hostedZoneDomainName}`;
-    const websiteName = `${this.environmentName}-recipe-website`;
-    this.recipeWebsite = new Website(this, websiteName, {
+        ? `${this.name}.${this.hostedZoneDomainName}`
+        : `${this.environmentName}.${this.name}.${this.hostedZoneDomainName}`;
+    const websiteId = `${this.id}-website`;
+    this.recipeWebsite = new Website(this, websiteId, {
       environmentName: this.environmentName,
       certificateDomainName,
       hostedZone: this.hostedZone,
-      name: websiteName,
+      name: websiteId,
       sourcePath: 'websites/recipe-web',
     });
   }
 
-  private buildService() {
-    const serviceName = `${this.environmentName}-recipe-service`;
+  private buildRecipesService() {
+    const serviceId = `${this.id}-service`;
     const serviceSecrets = {
       RECIPES_DB_PASSWORD: Secret.fromSecretsManager(this.recipesDbCluster.dbPasswordSecret),
     };
     const serviceEnvironmentVariables = {
       ADDRESS: '0.0.0.0',
-      NAME: 'recipe-service',
+      NAME: this.id,
       PORT: '3000',
       RECIPES_DB_HOST: this.recipesDbCluster.instance.attrEndpointAddress,
       RECIPES_DB_NAME: this.recipesDbCluster.instance.databaseName,
@@ -160,12 +164,12 @@ export class PillarStack extends Stack {
       RECIPES_DB_SYNC: 'true',
       RECIPES_DB_USERNAME: this.recipesDbCluster.dbUsername,
     };
-    this.recipeService = new Service(this, serviceName, {
+    this.recipeService = new Service(this, serviceId, {
       domainName: this.hostedZoneDomainName,
       environment: serviceEnvironmentVariables,
       environmentName: this.environmentName,
       hostedZone: this.hostedZone,
-      name: serviceName,
+      name: this.id,
       routePath: '/recipes',
       secrets: serviceSecrets,
       sourcePath: 'services/recipe-service',

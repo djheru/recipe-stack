@@ -15,15 +15,25 @@ const pillarStackProps: StackProps = {
   },
 };
 
+// Common to all stacks
+const hostedZoneDomainName = 'di-metal.net';
+const name = 'recipes';
+
 // Each instance of the stack represents a new full environment
-const devStack = new PillarStack(app, 'recipe-stack-dev', {
+const devEnvironment = 'dev';
+const devStackId = `${name}-${devEnvironment}`;
+const devStack = new PillarStack(app, devStackId, {
   ...pillarStackProps,
-  environmentName: 'dev',
-  hostedZoneDomainName: 'di-metal.net',
+  environmentName: devEnvironment,
+  hostedZoneDomainName,
+  name,
 });
 
-const prodStack = new PillarStack(app, 'recipe-stack-prod', {
+const prodEnvironment = 'prod';
+const prodStackId = `${name}-${prodEnvironment}`;
+const prodStack = new PillarStack(app, prodStackId, {
   ...pillarStackProps,
-  environmentName: 'prod',
-  hostedZoneDomainName: 'di-metal.net',
+  environmentName: prodEnvironment,
+  hostedZoneDomainName,
+  name,
 });

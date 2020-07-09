@@ -6,7 +6,11 @@ test('Empty Stack', () => {
   const app = new cdk.App();
 
   // WHEN
-  const stack = new Pillar.PillarStack(app, 'MyTestStack', { environmentName: 'dev', hostedZoneDomainName: 'example.com' });
+  const stack = new Pillar.PillarStack(app, 'MyTestStack', {
+    environmentName: 'dev',
+    hostedZoneDomainName: 'example.com',
+    name: 'test-stack',
+  });
   // THEN
   expectCDK(stack).to(
     matchTemplate(
