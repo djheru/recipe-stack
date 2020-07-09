@@ -1,15 +1,7 @@
 const getS3VersionPath = (bucketName: string) => `${bucketName}/versions/${Date.now()}`;
 const s3GrantsUri = 'http://acs.amazonaws.com/groups/global/AllUsers';
 
-export const buildInfrastructureBuildSpec = ({
-  name,
-  sourcePath,
-  stackName,
-}: {
-  name: string;
-  sourcePath: string;
-  stackName: string;
-}) => ({
+export const buildInfrastructureBuildSpec = ({ name, sourcePath }: { name: string; sourcePath: string }) => ({
   version: '0.2',
   phases: {
     install: {
@@ -25,7 +17,7 @@ export const buildInfrastructureBuildSpec = ({
     post_build: {
       commands: [
         'echo Updating the CDK infrastructure stack...',
-        `npm run deploy -- --require-approval never ${stackName}`,
+        `npm run deploy -- --require-approval never ${name}`,
         'echo Build completed at `date`',
       ],
     },
@@ -33,54 +25,54 @@ export const buildInfrastructureBuildSpec = ({
 });
 
 export const buildServiceBuildSpec = ({
-         name,
-         sourcePath,
-         imageName,
-       }: {
-         name: string;
-         sourcePath: string;
-         imageName: string;
-       }) => ({
-         version: '0.2',
-         phases: {
-           pre_build: {
-             commands: [
-               'echo Build started at `date`',
-               `echo Beginning build operations for "${name}"`,
-               'echo Logging in to AWS ECR...',
-               '$(aws ecr get-login --no-include-email --region us-west-2)',
-             ],
-           },
-           build: {
-             commands: [
-               'echo Building the Docker image...',
-               `cd ${sourcePath}`,
-               'export BUILD_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:8}',
-               'echo BUILD_TAG: $BUILD_TAG',
-               'echo Tagging the Docker image...',
-               `docker build -t ${name} .`,
-               `docker tag ${name}:latest ${imageName}:latest`,
-               `docker tag ${name}:latest ${imageName}:$BUILD_TAG`,
-             ],
-           },
-           post_build: {
-             commands: [
-               'echo Pushing the Docker image...',
-               `docker push ${imageName}:$BUILD_TAG`,
-               `docker push ${imageName}:latest`,
-               `echo "Saving new imagedefinitions.json as a build artifact..."`,
-               `printf '[{"name": "${name}", "imageUri": "${imageName}:%s"}]' $BUILD_TAG > imagedefinitions.json`,
-               'cat imagedefinitions.json',
-               'echo Build completed on `date`',
-             ],
-           },
-         },
-         artifacts: {
-           files: ['imagedefinitions.json'],
-           'base-directory': sourcePath,
-           'discard-paths': true,
-         },
-       });
+  name,
+  sourcePath,
+  imageName,
+}: {
+  name: string;
+  sourcePath: string;
+  imageName: string;
+}) => ({
+  version: '0.2',
+  phases: {
+    pre_build: {
+      commands: [
+        'echo Build started at `date`',
+        `echo Beginning build operations for "${name}"`,
+        'echo Logging in to AWS ECR...',
+        '$(aws ecr get-login --no-include-email --region us-west-2)',
+      ],
+    },
+    build: {
+      commands: [
+        'echo Building the Docker image...',
+        `cd ${sourcePath}`,
+        'export BUILD_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:8}',
+        'echo BUILD_TAG: $BUILD_TAG',
+        'echo Tagging the Docker image...',
+        `docker build -t ${name} .`,
+        `docker tag ${name}:latest ${imageName}:latest`,
+        `docker tag ${name}:latest ${imageName}:$BUILD_TAG`,
+      ],
+    },
+    post_build: {
+      commands: [
+        'echo Pushing the Docker image...',
+        `docker push ${imageName}:$BUILD_TAG`,
+        `docker push ${imageName}:latest`,
+        `echo "Saving new imagedefinitions.json as a build artifact..."`,
+        `printf '[{"name": "${name}", "imageUri": "${imageName}:%s"}]' $BUILD_TAG > imagedefinitions.json`,
+        'cat imagedefinitions.json',
+        'echo Build completed on `date`',
+      ],
+    },
+  },
+  artifacts: {
+    files: ['imagedefinitions.json'],
+    'base-directory': sourcePath,
+    'discard-paths': true,
+  },
+});
 
 export const buildWebsiteBuildSpec = ({ name, sourcePath }: { name: string; sourcePath: string }) => ({
   version: '0.2',
