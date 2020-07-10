@@ -84,7 +84,7 @@ export class ServicePipeline extends Construct implements Pipelineable {
   }
 
   public getDeployActions({ inputArtifact }: GetPipelineActionsProps) {
-    const deployActionName = `${this.name}-deploy-action`;
+    const deployActionName = `${this.name}-ecs-deploy-action`;
     const deployAction = new EcsDeployAction({
       actionName: deployActionName,
       input: inputArtifact,
