@@ -157,7 +157,7 @@ export class PillarStack extends Stack {
     const serviceEnvironmentVariables = {
       ADDRESS: '0.0.0.0',
       NAME: this.id,
-      PORT: '3000',
+      PORT: '4000',
       RECIPES_DB_HOST: this.recipesDbCluster.instance.attrEndpointAddress,
       RECIPES_DB_NAME: this.recipesDbCluster.instance.databaseName,
       RECIPES_DB_PORT: this.recipesDbCluster.instance.attrEndpointPort,

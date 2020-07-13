@@ -10,7 +10,7 @@ services:
       - ./recipe-service:/usr/src/app
       - /usr/src/app/node_modules
     ports:
-      - 3000:3000
+      - 4000:4000
     command: npm run start:dev
     env_file:
       - ./recipe-service/.env
