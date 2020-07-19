@@ -169,7 +169,7 @@ export class PillarStack extends Stack {
       environment: serviceEnvironmentVariables,
       environmentName: this.environmentName,
       hostedZone: this.hostedZone,
-      name: this.id,
+      name: serviceId,
       routePath: `/${this.name}`,
       secrets: serviceSecrets,
       sourcePath: 'services/recipe-service',
